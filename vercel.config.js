@@ -4,15 +4,23 @@ export default {
     {
       src: "client/package.json",
       use: "@vercel/static-build",
-      config: { distDir: "dist" }, // <-- correctly pointing to dist folder
+      config: {
+        outputDirectory: "dist" // Key fix: 'outputDirectory' instead of 'distDir'
+      }
     },
     {
       src: "api/**/*.js",
-      use: "@vercel/node",
-    },
+      use: "@vercel/node"
+    }
   ],
   routes: [
-    { src: "/api/(.*)", dest: "/api/$1.js" },
-    { src: "/(.*)", dest: "/client/$1" },
-  ],
+    { 
+      src: "/api/(.*)", 
+      dest: "/api/$1.js" 
+    },
+    { 
+      src: "/(.*)", 
+      dest: "/$1" // Fixed: Serve static files from root, not /client
+    }
+  ]
 };
