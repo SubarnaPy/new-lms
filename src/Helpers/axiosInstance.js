@@ -4,7 +4,7 @@ import axios from "axios";
 
 // const BASE_URL = "https://lms4-7d49.onrender.com/api/v1";
 
- const BASE_URL = "http://localhost:5001/api/v1";
+const BASE_URL = "https://new-mern-backend-cp5h.onrender.com/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
