@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import io from "socket.io-client";
+
 import {
-  Badge, IconButton, TextField, Button, Dialog, DialogTitle, DialogContent, List, ListItem,
-  ListItemText, Typography
+  Badge, IconButton, TextField,  Dialog, DialogTitle, DialogContent, 
+  
 } from '@mui/material';
+import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import {
-  Videocam, VideocamOff, Mic, MicOff, Chat, CallEnd, Person, RaiseHand,
+  Videocam, VideocamOff, Mic, MicOff, Chat,  Person, 
   RecordVoiceOver
 } from '@mui/icons-material';
 // import styles from "../styles/videoComponent.module.css";
@@ -244,7 +246,7 @@ export default function LiveClassComponent({ userRole }) {
             <p className="font-medium">{p.name || 'Anonymous'}</p>
             <p className="text-sm text-gray-400">{p.isTeacher ? 'Teacher' : 'Student'}</p>
           </div>
-          {classState.raisedHands.includes(p.id) && <RaiseHand className="ml-auto text-yellow-400" />}
+          {classState.raisedHands.includes(p.id) && <AccessibilityNewIcon className="ml-auto text-yellow-400" />}
         </li>
       ))}
     </ul>
@@ -283,7 +285,7 @@ export default function LiveClassComponent({ userRole }) {
       {mediaState.audio ? <Mic /> : <MicOff />}
     </IconButton>
     <IconButton onClick={raiseHand} className="text-white">
-      <RaiseHand />
+      <AccessibilityNewIcon />
     </IconButton>
 
     {userRole === 'teacher' && (
