@@ -5,7 +5,10 @@ export default {
       src: "client/package.json",
       use: "@vercel/static-build",
       config: {
-        outputDirectory: "dist" // Key fix: 'outputDirectory' instead of 'distDir'
+        distDir: "dist",  // This correctly specifies the build output folder
+        build: {
+          chunkSizeWarningLimit: 1000  // Raise the chunk size warning limit to 1000 KB (1 MB)
+        }
       }
     },
     {
@@ -14,13 +17,13 @@ export default {
     }
   ],
   routes: [
-    { 
-      src: "/api/(.*)", 
-      dest: "/api/$1.js" 
+    {
+      src: "/api/(.*)",
+      dest: "/api/$1.js"
     },
-    { 
-      src: "/(.*)", 
-      dest: "/$1" // Fixed: Serve static files from root, not /client
+    {
+      src: "/(.*)",
+      dest: "/$1"  // This routes the rest of the traffic to the client-side app
     }
   ]
 };
