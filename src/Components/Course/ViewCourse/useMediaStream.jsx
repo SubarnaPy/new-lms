@@ -1,86 +1,99 @@
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'react-hot-toast';
 
-export const useMediaStream = (role) => {
+export const useMediaStream = (role, userId) => {
   const [localStream, setLocalStream] = useState(null);
   const [mediaState, setMediaState] = useState({ video: true, audio: true });
-  const mediaStateRef = useRef(mediaState); // Prevent stale closure
+  const mediaStateRef = useRef(mediaState);
 
-  // Update ref whenever mediaState changes
   useEffect(() => {
     mediaStateRef.current = mediaState;
   }, [mediaState]);
 
-  // Request media stream based on current state
-  const getMedia = async () => {
+  const getMedia = async (constraints) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: mediaStateRef.current.video,
-        audio: mediaStateRef.current.audio,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setLocalStream(stream);
+      return true;
     } catch (error) {
-      console.error('Error accessing media devices:', error);
-      if (error.name === 'NotAllowedError') {
-        alert('Permission denied. Please allow access to your camera and microphone.');
-      } else if (error.name === 'NotFoundError') {
-        alert('No media devices found.');
-      } else {
-        alert('An unknown error occurred while accessing media devices.');
-      }
+      console.error('Media access error:', error);
+      toast.error(`Media access denied: ${error.message}`);
+      return false;
     }
   };
 
-  // Toggle video or audio track
-  const toggleMedia = (type) => {
-    if (role !== 'INSTRUCTOR') return;
-
-    setMediaState(prev => {
-      const newState = { ...prev, [type]: !prev[type] };
-
-      // Update tracks live without restarting the stream
-      if (localStream) {
-        const track = type === 'video'
-          ? localStream.getVideoTracks()[0]
-          : localStream.getAudioTracks()[0];
-
-        if (track) {
-          track.enabled = newState[type]; // Toggle track enabled state
-        }
-      }
-
-      return newState;
+  const initializeMedia = async () => {
+    const success = await getMedia({
+      video: mediaState.video,
+      audio: mediaState.audio,
     });
-  };
-
-  // Start screen sharing
-  const screenShare = async () => {
-    if (role !== 'INSTRUCTOR') return;
-
-    // Stop any active video track before switching to screen share
-    localStream?.getVideoTracks().forEach(track => track.stop());
-
-    try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      setLocalStream(screenStream);  // Update stream with screen share stream
-    } catch (error) {
-      console.error('Error sharing screen:', error);
-      alert('Failed to share screen.');
+    
+    if (!success) {
+      setMediaState({ video: false, audio: false });
     }
   };
 
-  // Log local stream (for debugging purposes)
-  console.log(localStream);
+  const toggleMedia = async (type) => {
+    if (role !== 'INSTRUCTOR') return;
 
-  // Initial media fetch on mount
-  useEffect(() => {
-    getMedia();
+    const newState = { ...mediaStateRef.current, [type]: !mediaStateRef.current[type] };
+    
+    if (localStream) {
+      const track = localStream.getTracks().find(t => t.kind === type);
+      if (track) track.enabled = newState[type];
+    } else {
+      const success = await getMedia(newState);
+      if (success) setMediaState(newState);
+    }
+  };
 
-    return () => {
-      // Clean up all tracks when the component unmounts or stream changes
-      localStream?.getTracks().forEach(track => track.stop());
+  const retryMedia = async (type) => {
+    const constraints = { 
+      [type]: true,
+      ...(type === 'video' ? { audio: mediaState.audio } : { video: mediaState.video })
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
+    const success = await getMedia(constraints);
+    if (success) setMediaState(prev => ({ ...prev, [type]: true }));
+  };
+
+  const screenShare = async () => {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true
+      });
+
+      const audioTracks = localStream?.getAudioTracks() || [];
+      const newStream = new MediaStream([
+        ...screenStream.getVideoTracks(),
+        ...audioTracks
+      ]);
+
+      setLocalStream(newStream);
+    } catch (error) {
+      toast.error('Screen sharing cancelled');
+    }
+  };
+
+  const endCall = () => {
+    localStream?.getTracks().forEach(track => track.stop());
+    setLocalStream(null);
+    setMediaState({ video: false, audio: false });
+  };
+
+  useEffect(() => {
+    initializeMedia();
+    return endCall;
   }, []);
 
-  return { localStream, toggleMedia, screenShare };
+  return {
+    localStream,
+    toggleMedia,
+    retryMedia,
+    isVideoOn: mediaState.video,
+    isAudioOn: mediaState.audio,
+    screenShare,
+    endCall
+  };
 };

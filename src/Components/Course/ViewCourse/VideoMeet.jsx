@@ -1,28 +1,34 @@
+// import React, { useEffect, useRef, useState } from 'react';
+// import io from 'socket.io-client';
+// import { useDispatch, useSelector } from 'react-redux';
+// import { useNavigate, useParams } from 'react-router-dom';
+// import { toast } from 'react-hot-toast';
+// import { getFullDetailsOfCourse } from '../../../Redux/courseSlice';
+// import { VideoGrid } from './VideoGrid';
+// import { MediaControls } from './MediaControl';
+// import { ClassChat } from './classChat';
+// import { Whiteboard } from './WhitBoard';
+// import { NetworkStatusIndicator } from './NetworkStatusIndicator';
+// import { ParticipantList } from './videoParicipents';
+// import { useMediaStream } from './useMediaStream';
+// import { useRecording } from './useRecording';
+// import { useActiveSpeaker } from './useActiveSpeaker';
+
+const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { getFullDetailsOfCourse } from '../../../Redux/courseSlice';
 import { VideoGrid } from './VideoGrid';
 import { MediaControls } from './MediaControl';
 import { ClassChat } from './classChat';
-import { Whiteboard } from './WhitBoard';
+import { Whiteboard } from './Whiteboard';
 import { NetworkStatusIndicator } from './NetworkStatusIndicator';
-import { ParticipantList } from './videoParicipents';
+import { ParticipantList } from './ParticipantList';
 import { useMediaStream } from './useMediaStream';
 import { useRecording } from './useRecording';
 import { useActiveSpeaker } from './useActiveSpeaker';
-
-const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
-// src/components/VideoConference/VideoMeet.jsx
-// import React, { useEffect, useRef, useState } from 'react';
-import io from 'socket.io-client';
-// import { useSelector } from 'react-redux';
-// import { useParams, useNavigate } from 'react-router-dom';
-// import { toast } from 'react-hot-toast';
-import clsx from 'clsx';
-
 
 // const SERVER_URL = process.env.REACT_APP_SOCKET_SERVER_URL;
 
@@ -47,7 +53,16 @@ const VideoMeet = () => {
     classDuration: 0,
   });
 
-  const { localStream, toggleMedia, isVideoOn, isAudioOn, screenShare, endCall } = useMediaStream(role);
+  const { 
+    localStream, 
+    toggleMedia, 
+    retryMedia,
+    isVideoOn, 
+    isAudioOn, 
+    screenShare, 
+    endCall 
+  } = useMediaStream(role, userId);
+  
   const { startRecording, stopRecording, isRecording } = useRecording(localStream);
   const activeSpeaker = useActiveSpeaker(state.participants);
 
@@ -73,13 +88,8 @@ const VideoMeet = () => {
       }
     };
 
-    if (courseId && userId) {
-      connectToSocket();
-    }
-
-    return () => {
-      cleanupConnection();
-    };
+    if (courseId && userId) connectToSocket();
+    return () => cleanupConnection();
   }, [courseId, userId]);
 
   // Media stream handling
@@ -146,7 +156,11 @@ const VideoMeet = () => {
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        // Add TURN servers here for production
+        {
+          urls: 'turn:your-turn-server.com:3478',
+          username: 'your-username',
+          credential: 'your-password'
+        }
       ],
     });
 
@@ -175,7 +189,6 @@ const VideoMeet = () => {
     }
 
     peerConnections.current.set(userId, pc);
-    return pc;
   };
 
   const handleRemoteTrack = (userId, stream) => {
@@ -221,9 +234,8 @@ const VideoMeet = () => {
     peerConnections.current.forEach(pc => {
       const senders = pc.getSenders();
       localStream?.getTracks().forEach(track => {
-        if (!senders.some(s => s.track === track)) {
-          pc.addTrack(track, localStream);
-        }
+        const sender = senders.find(s => s.track?.kind === track.kind);
+        sender ? sender.replaceTrack(track) : pc.addTrack(track, localStream);
       });
     });
   };
@@ -231,9 +243,11 @@ const VideoMeet = () => {
   const handleRaiseHand = (userId, isRaised) => {
     setState(prev => ({
       ...prev,
-      raisedHands: new Set(isRaised 
-        ? [...prev.raisedHands, userId] 
-        : [...prev.raisedHands].filter(id => id !== userId)
+      raisedHands: new Set(
+        isRaised
+          ? [...prev.raisedHands, userId]
+          : [...prev.raisedHands].filter(id => id !== userId)
+      )
     }));
   };
 
@@ -300,6 +314,27 @@ const VideoMeet = () => {
     socketRef.current.emit('share-file', fileData);
   };
 
+  // Network quality monitoring
+  useEffect(() => {
+    const handleNetworkChange = () => {
+      const connection = navigator.connection;
+      if (connection) {
+        const quality = connection.downlink > 1 ? 'good' : 
+                       connection.downlink > 0.5 ? 'fair' : 'poor';
+        setState(prev => ({ ...prev, networkQuality: quality }));
+      }
+    };
+
+    if (navigator.connection) {
+      navigator.connection.addEventListener('change', handleNetworkChange);
+    }
+    return () => {
+      if (navigator.connection) {
+        navigator.connection.removeEventListener('change', handleNetworkChange);
+      }
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-screen text-gray-100 bg-gray-900">
       {/* Top Header */}
@@ -351,8 +386,12 @@ const VideoMeet = () => {
           isVideoOn={isVideoOn}
           isAudioOn={isAudioOn}
           isRecording={isRecording}
+          showVideoRetry={!isVideoOn}
+          showAudioRetry={!isAudioOn}
           onToggleVideo={() => toggleMedia('video')}
           onToggleAudio={() => toggleMedia('audio')}
+          onRetryVideo={() => retryMedia('video')}
+          onRetryAudio={() => retryMedia('audio')}
           onScreenShare={screenShare}
           onEndCall={() => {
             endCall();
