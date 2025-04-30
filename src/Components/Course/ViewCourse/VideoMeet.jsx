@@ -14,7 +14,7 @@ import { useMediaStream } from './useMediaStream';
 import { useRecording } from './useRecording';
 import { useActiveSpeaker } from './useActiveSpeaker';
 
-const SERVER_URL = 'http://localhost:5001/';
+const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 
 export const VideoMeet = () => {
   const { courseId } = useParams();
@@ -376,26 +376,26 @@ export const VideoMeet = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-gray-100">
-      <div className="flex justify-between items-center p-4 bg-gray-800 border-b border-gray-700">
+    <div className="flex flex-col h-screen text-gray-100 bg-gray-900">
+      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
         <div className="flex items-center space-x-4">
           <h2 className="text-xl font-semibold">{FullDetailsOfCourse?.courseName}</h2>
           <div className="flex items-center space-x-2">
             <NetworkStatusIndicator quality={networkQuality} />
-            <span className="bg-gray-700 px-2 py-1 rounded text-sm">
+            <span className="px-2 py-1 text-sm bg-gray-700 rounded">
               {new Date(classDuration * 1000).toISOString().substr(11, 8)}
             </span>
           </div>
         </div>
         <button
           onClick={() => setParticipantListOpen(!participantListOpen)}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          className="px-4 py-2 transition-colors bg-gray-700 rounded-lg hover:bg-gray-600"
         >
           Participants ({participants.length + 1})
         </button>
       </div>
 
-      <div className="flex-1 relative overflow-hidden">
+      <div className="relative flex-1 overflow-hidden">
         <VideoGrid
           participants={participants}
           localStream={localStream}
@@ -403,14 +403,14 @@ export const VideoMeet = () => {
           raisedHands={raisedHands}
         />
 
-        <div className="fixed bottom-4 right-4 w-48 h-32 rounded-lg overflow-hidden border-2 border-white shadow-xl">
-          <video className="w-full h-full object-cover" ref={localVideoref} autoPlay muted playsInline />
+        <div className="fixed w-48 h-32 overflow-hidden border-2 border-white rounded-lg shadow-xl bottom-4 right-4">
+          <video className="object-cover w-full h-full" ref={localVideoref} autoPlay muted playsInline />
         </div>
       </div>
 
 
       {/* Controls */}
-      <div className="flex justify-center items-center p-4 bg-gray-800 border-t border-gray-700 space-x-4">
+      <div className="flex items-center justify-center p-4 space-x-4 bg-gray-800 border-t border-gray-700">
         <MediaControls
           role={role}
           onToggleVideo={() => toggleMedia('video')}
@@ -432,7 +432,7 @@ export const VideoMeet = () => {
 
       {/* Chat */}
       {chatOpen && (
-        <div className="fixed bottom-24 right-4 w-80 bg-gray-800 rounded-lg shadow-xl">
+        <div className="fixed bg-gray-800 rounded-lg shadow-xl bottom-24 right-4 w-80">
           <ClassChat
             messages={messages}
             files={files}
@@ -446,7 +446,7 @@ export const VideoMeet = () => {
 
       {/* Participant List */}
       {participantListOpen && (
-        <div className="fixed right-4 top-20 w-64 bg-gray-800 rounded-lg shadow-xl p-4">
+        <div className="fixed w-64 p-4 bg-gray-800 rounded-lg shadow-xl right-4 top-20">
           <ParticipantList
             participants={participants}
             raisedHands={raisedHands}
@@ -461,8 +461,8 @@ export const VideoMeet = () => {
 
       {/* Whiteboard */}
       {whiteboardOpen && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center">
-          <div className="w-full h-full max-w-6xl bg-white rounded-lg overflow-hidden">
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-90">
+          <div className="w-full h-full max-w-6xl overflow-hidden bg-white rounded-lg">
             <Whiteboard
               isInstructor={role === 'INSTRUCTOR'}
               onClose={() => setWhiteboardOpen(false)}
