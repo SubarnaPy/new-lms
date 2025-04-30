@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { getFullDetailsOfCourse } from '../../../Redux/courseSlice';
 // import LoadingSpinner from '../../Common/LoadingSpinner';
-import {VideoMeet} from './VideoMeet';
+import LiveClassComponent from './VideoMeet';
 
 const CourseAccessValidator = () => {
   const { courseId } = useParams();
@@ -63,7 +63,7 @@ const CourseAccessValidator = () => {
     return null; // Redirect handled in useEffect
   }
 
-  return <VideoMeet />;
+  return <LiveClassComponent />;
 };
 
 export default CourseAccessValidator;
