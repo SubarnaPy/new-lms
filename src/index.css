@@ -1,0 +1,13 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body {
+  overflow-x: hidden;
+  
+  
+    /* overflow: hidden;  Disables scrolling for the entire page */
+  }
+  
