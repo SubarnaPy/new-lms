@@ -15,404 +15,342 @@ import { useRecording } from './useRecording';
 import { useActiveSpeaker } from './useActiveSpeaker';
 
 const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
+// src/components/VideoConference/VideoMeet.jsx
+// import React, { useEffect, useRef, useState } from 'react';
+import io from 'socket.io-client';
+// import { useSelector } from 'react-redux';
+// import { useParams, useNavigate } from 'react-router-dom';
+// import { toast } from 'react-hot-toast';
+import clsx from 'clsx';
 
-export const VideoMeet = () => {
+
+// const SERVER_URL = process.env.REACT_APP_SOCKET_SERVER_URL;
+
+const VideoMeet = () => {
   const { courseId } = useParams();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const socketRef = useRef(null);
-  const localVideoref = useRef(null);
+  const localVideoRef = useRef(null);
   const peerConnections = useRef(new Map());
+  const reconnectAttempts = useRef(0);
 
   const { role, _id: userId, name: userName } = useSelector((state) => state.auth.data);
-  const { FullDetailsOfCourse } = useSelector((state) => state.course);
+  const [state, setState] = useState({
+    participants: [],
+    messages: [],
+    files: [],
+    raisedHands: new Set(),
+    isChatOpen: false,
+    isWhiteboardOpen: false,
+    isParticipantListOpen: false,
+    networkQuality: 'good',
+    classDuration: 0,
+  });
 
-  const [participants, setParticipants] = useState([]);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
-  const [participantListOpen, setParticipantListOpen] = useState(false);
-  const [classDuration, setClassDuration] = useState(0);
-  const [networkQuality, setNetworkQuality] = useState('good');
-  const [messages, setMessages] = useState([]);
-  const [files, setFiles] = useState([]);
-  const [raisedHands, setRaisedHands] = useState(new Set());
-
-  const { localStream, toggleMedia, screenShare, endCall } = useMediaStream(role);
+  const { localStream, toggleMedia, isVideoOn, isAudioOn, screenShare, endCall } = useMediaStream(role);
   const { startRecording, stopRecording, isRecording } = useRecording(localStream);
-  const activeSpeaker = useActiveSpeaker(participants);
+  const activeSpeaker = useActiveSpeaker(state.participants);
 
+  // Socket.io connection management
   useEffect(() => {
-    const updatePeerConnections = () => {
-      peerConnections.current.forEach(pc => {
-        const senders = pc.getSenders();
-        localStream?.getTracks().forEach(track => {
-          if (!senders.some(s => s.track === track)) {
-            pc.addTrack(track, localStream);
-          }
+    const connectToSocket = async () => {
+      try {
+        socketRef.current = io(SERVER_URL, {
+          auth: {
+            courseId,
+            userId,
+            token: localStorage.getItem('token'),
+          },
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 3000,
+          transports: ['websocket'],
         });
-      });
+
+        setupSocketListeners();
+      } catch (error) {
+        handleConnectionError(error);
+      }
     };
 
-    if (localStream) {
+    if (courseId && userId) {
+      connectToSocket();
+    }
+
+    return () => {
+      cleanupConnection();
+    };
+  }, [courseId, userId]);
+
+  // Media stream handling
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
       updatePeerConnections();
-      const interval = setInterval(updatePeerConnections, 2000);
-      return () => clearInterval(interval);
     }
   }, [localStream]);
 
-  useEffect(() => {
-    if (!courseId || !userId) return;
-  
-    socketRef.current =  io(SERVER_URL, {
-        auth: {
-          courseId,
-          userId,  // Send user ID in handshake
-          token: localStorage.getItem('token')
-        },
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 3000
-      });
-    
-      
-    
-      // Handle reconnection events
-      socketRef.current.on("user-reconnected", ({ oldSocketId, newSocketId, userId }) => {
-        console.log(oldSocketId, newSocketId, userId)
-        // Update peer connections
-        const oldPeer = peerConnections.current.get(oldSocketId);
-        if (oldPeer) {
-          oldPeer.close();
-          peerConnections.current.delete(oldSocketId);
-        }
-    
-        // Create new connection if needed
-        if (!peerConnections.current.has(newSocketId)) {
-          const pc = createPeerConnection(newSocketId);
-          peerConnections.current.set(newSocketId, pc);
-        }
-    
-        // Update participants list
-        setParticipants(prev => prev.map(p => 
-          p.userId === userId ? { ...p, id: newSocketId } : p
-        ));
-      });
-  
-    socketRef.current.on('connect', () => {
-      console.log('Connected to socket server');
+  const setupSocketListeners = () => {
+    const socket = socketRef.current;
+
+    socket.on('connect', () => {
+      reconnectAttempts.current = 0;
+      toast.success('Connected to meeting');
     });
-  
-    socketRef.current.on('error', (error) => {
-      toast.error(error.message || 'Connection error');
-      if (error.message === 'Course access denied') {
-        navigate(`/course/${courseId}`);
-      }
-    });
-  
-    socketRef.current.on('user-joined', (socketId, userData) => {
-      console.log('User joined:', userData);
-      setParticipants(prev => [...prev, {
-        id: socketId,
+
+    socket.on('participants', handleParticipantsUpdate);
+    socket.on('user-joined', handleUserJoined);
+    socket.on('user-left', handleUserLeft);
+    socket.on('offer', handleOffer);
+    socket.on('answer', handleAnswer);
+    socket.on('ice-candidate', handleIceCandidate);
+    socket.on('chat-message', handleNewMessage);
+    socket.on('file-shared', handleFileShared);
+    socket.on('raise-hand', handleRaiseHand);
+    socket.on('disconnect', handleSocketDisconnect);
+    socket.on('connect_error', handleConnectionError);
+  };
+
+  const handleParticipantsUpdate = (participants) => {
+    setState(prev => ({
+      ...prev,
+      participants: participants.map(user => ({
+        userId: user.userId,
+        name: user.name,
+        role: user.role,
+        stream: null,
+      })),
+    }));
+
+    participants
+      .filter(user => user.userId !== userId)
+      .forEach(user => createPeerConnection(user.userId));
+  };
+
+  const handleUserJoined = (userData) => {
+    setState(prev => ({
+      ...prev,
+      participants: [...prev.participants, {
         userId: userData.userId,
         name: userData.name,
         role: userData.role,
-        stream: null
-      }]);
-      createPeerConnectionAndSendOffer(socketId);
-    });
-  
-    socketRef.current.on('offer', async (fromId, offer) => {
-      console.log(fromId, offer);
-      const pc = createPeerConnection(fromId);
-      peerConnections.current.set(fromId, pc);
-  
-      try {
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-  
-        if (localStream) {
-          localStream.getTracks().forEach(track => {
-            if (!pc.getSenders().some(s => s.track === track)) {
-              pc.addTrack(track, localStream);
-            }
-          });
-        }
-  
-        socketRef.current.emit('answer', fromId, answer);
-      } catch (err) {
-        console.error('Offer handling error:', err);
-      }
-    });
-  
-    socketRef.current.on('answer', async (fromId, answer) => {
-      const pc = peerConnections.current.get(fromId);
-      if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(answer));
-      }
-    });
-  
-    socketRef.current.on('ice-candidate', (fromId, candidate) => {
-      const pc = peerConnections.current.get(fromId);
-      if (pc && candidate) {
-        pc.addIceCandidate(new RTCIceCandidate(candidate));
-      }
-    });
-  
-    socketRef.current.on('user-left', (socketId) => {
-      const pc = peerConnections.current.get(socketId);
-      if (pc) {
-        pc.close();
-        peerConnections.current.delete(socketId);
-      }
-  
-      setParticipants(prev => prev.filter(p => p.id !== socketId));
-    });
-  
-    socketRef.current.on('chat-message', message => {
-      setMessages(prev => [...prev, message]);
-    });
-  
-    socketRef.current.on('file-shared', file => {
-      setFiles(prev => [...prev, file]);
-    });
-  
-    socketRef.current.on('raise-hand', (socketId, isRaised) => {
-      setRaisedHands(prev => {
-        const newSet = new Set(prev);
-        isRaised ? newSet.add(socketId) : newSet.delete(socketId);
-        return newSet;
-      });
-    });
+        stream: null,
+      }],
+    }));
+    createPeerConnection(userData.userId);
+  };
 
-    const shouldRenegotiate = (userId) => {
-        const participant = participants.find(p => p.userId === userId);
-        return participant?.role === 'INSTRUCTOR' || activeSpeaker === userId;
-      };
-  
-    // ✅ Handle user reconnection with new socket ID
-    socketRef.current.on("user-reconnected", ({ oldSocketId, newSocketId, userId }) => {
-        console.log(`♻️ User ${userId} reconnected: ${oldSocketId} → ${newSocketId}`);
-      
-        // Cleanup old connection with state validation
-        const cleanupOldConnection = () => {
-          const oldPeer = peerConnections.current.get(oldSocketId);
-          if (oldPeer) {
-            console.log(`Closing old connection for ${oldSocketId}`);
-            try {
-              oldPeer.close();
-            } catch (err) {
-              console.error('Error closing old peer:', err);
-            }
-            peerConnections.current.delete(oldSocketId);
-          }
-        };
-      
-        // Create new connection with error handling
-        const establishNewConnection = () => {
-          try {
-            const newPeer = createPeerConnection(newSocketId);
-            peerConnections.current.set(newSocketId, newPeer);
-            console.log(`🔄 Created new connection for ${newSocketId}`);
-      
-            // Update UI state atomically
-            setParticipants(prev => prev.map(p => 
-              p.userId === userId ? console.log("dfghjmnbvcxcvbnmbvcxvbn bvc xc") : p
-            ));
-      
-            // Initiate renegotiation if needed
-            if (shouldRenegotiate(userId)) {
-              console.log(`⏳ Initiating renegotiation for ${newSocketId}`);
-              createPeerConnectionAndSendOffer(newSocketId);
-            }
-          } catch (error) {
-            console.error('Connection recovery failed:', error);
-            toast.error('Failed to re-establish connection');
-          }
-        };
-      
-        // Sequence operations safely
-        cleanupOldConnection();
-        establishNewConnection();
-      
-        // Update media track subscriptions
-        if (localStream) {
-          localStream.getTracks().forEach(track => {
-            peerConnections.current.get(newSocketId)?.addTrack(track, localStream);
-          });
-        }
-      });
+  const createPeerConnection = async (userId) => {
+    if (peerConnections.current.has(userId)) return;
 
-  
-    return () => {
-      socketRef.current.disconnect();
-      peerConnections.current.forEach(pc => pc.close());
-      peerConnections.current.clear();
-    };
-  }, [courseId, userId, localStream]);
-  
-
- 
-
-  useEffect(() => {
-    if (localStream && localVideoref.current) {
-      localVideoref.current.srcObject = localStream;
-    }
-  }, [localStream]);
-
-  const createPeerConnection = (remoteSocketId) => {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        // Add TURN servers here for production
+      ],
     });
-  
-    if (localStream) {
-      localStream.getTracks().forEach(track => {
-        pc.addTrack(track, localStream);
-      });
-    }
-  
-    console.log('Created peer connection for', remoteSocketId);
-  
+
     pc.onicecandidate = (e) => {
       if (e.candidate) {
-        socketRef.current.emit('ice-candidate', remoteSocketId, e.candidate);
+        socketRef.current.emit('ice-candidate', userId, e.candidate);
       }
     };
-  
+
+    pc.ontrack = (e) => {
+      handleRemoteTrack(userId, e.streams[0]);
+    };
+
     pc.onnegotiationneeded = async () => {
       try {
-        // Step 1: Set the remote description (make sure this is coming from the signaling server)
-        // Assuming you receive the remote description (offer or answer) via socket
-        const remoteDescription = await getRemoteDescription(remoteSocketId);
-  
-        await pc.setRemoteDescription(remoteDescription);
-  
-        // Step 2: Create a new offer
         const offer = await pc.createOffer();
-  
-        // Step 3: Set the local description (the offer)
         await pc.setLocalDescription(offer);
-  
-        // Step 4: Send the offer to the remote peer
-        socketRef.current.emit('offer', remoteSocketId, offer);
-      } catch (err) {
-        console.error('Negotiation error:', err);
+        socketRef.current.emit('offer', userId, offer);
+      } catch (error) {
+        console.error('Negotiation error:', error);
       }
     };
-  
-    // Handling the 'ontrack' event to update participants' streams
-    pc.ontrack = (e) => {
-      if (e.streams.length > 0) {
-        setParticipants(prev =>
-          prev.map(p =>
-            p.id === remoteSocketId ? { ...p, stream: e.streams[0] } : p
-          )
-        );
-      }
-    };
-  
-    peerConnections.current.set(remoteSocketId, pc);
+
+    if (localStream) {
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
+
+    peerConnections.current.set(userId, pc);
     return pc;
   };
-  
-  
-  // Helper function to get the remote description (SDP) for the given peer
-  const getRemoteDescription = async (remoteSocketId) => {
-    // Replace with your signaling code to get the remote SDP (e.g., via socket)
-    // Here, we assume you're receiving it via socket or some other method
-    return new Promise((resolve, reject) => {
-      socketRef.current.emit('get-remote-description', remoteSocketId, (remoteDescription) => {
-        if (remoteDescription) {
-          resolve(remoteDescription);
-        } else {
-          reject('Failed to get remote description');
+
+  const handleRemoteTrack = (userId, stream) => {
+    setState(prev => ({
+      ...prev,
+      participants: prev.participants.map(p => 
+        p.userId === userId ? { ...p, stream } : p
+      ),
+    }));
+  };
+
+  const handleOffer = async (fromUserId, offer) => {
+    const pc = await createPeerConnection(fromUserId);
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socketRef.current.emit('answer', fromUserId, answer);
+  };
+
+  const handleAnswer = async (fromUserId, answer) => {
+    const pc = peerConnections.current.get(fromUserId);
+    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  };
+
+  const handleIceCandidate = (fromUserId, candidate) => {
+    const pc = peerConnections.current.get(fromUserId);
+    if (pc) pc.addIceCandidate(new RTCIceCandidate(candidate));
+  };
+
+  const handleUserLeft = (leftUserId) => {
+    const pc = peerConnections.current.get(leftUserId);
+    if (pc) {
+      pc.close();
+      peerConnections.current.delete(leftUserId);
+    }
+    setState(prev => ({
+      ...prev,
+      participants: prev.participants.filter(p => p.userId !== leftUserId),
+    }));
+  };
+
+  const updatePeerConnections = () => {
+    peerConnections.current.forEach(pc => {
+      const senders = pc.getSenders();
+      localStream?.getTracks().forEach(track => {
+        if (!senders.some(s => s.track === track)) {
+          pc.addTrack(track, localStream);
         }
       });
     });
   };
-  
-  
 
-  const createPeerConnectionAndSendOffer = async (remoteSocketId) => {
-    const pc = createPeerConnection(remoteSocketId);
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    socketRef.current.emit('offer', remoteSocketId, offer);
+  const handleRaiseHand = (userId, isRaised) => {
+    setState(prev => ({
+      ...prev,
+      raisedHands: new Set(isRaised 
+        ? [...prev.raisedHands, userId] 
+        : [...prev.raisedHands].filter(id => id !== userId)
+    }));
   };
 
-  const handleRaiseHand = () => {
-    const isRaised = !raisedHands.has(socketRef.current.id);
-    socketRef.current.emit('raise-hand', isRaised);
+  const handleNewMessage = (message) => {
+    setState(prev => ({ ...prev, messages: [...prev.messages, message] }));
   };
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (file.size > 50 * 1024 * 1024) return toast.error('File too large');
+  const handleFileShared = (file) => {
+    setState(prev => ({ ...prev, files: [...prev.files, file] }));
+  };
 
-    const fileData = {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      sender: { id: userId, name: userName, role },
-      timestamp: new Date(),
-      url: URL.createObjectURL(file)
-    };
+  const handleSocketDisconnect = (reason) => {
+    if (reason === 'io server disconnect') {
+      socketRef.current.connect();
+    }
+    toast.error('Disconnected from server. Reconnecting...');
+  };
 
-    socketRef.current.emit('share-file', fileData);
-    setFiles(prev => [...prev, fileData]);
+  const handleConnectionError = (error) => {
+    if (reconnectAttempts.current++ > 5) {
+      toast.error('Failed to connect. Please check your network.');
+      navigate(`/course/${courseId}`);
+    }
+  };
+
+  const cleanupConnection = () => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+    peerConnections.current.forEach(pc => pc.close());
+    peerConnections.current.clear();
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
   };
 
   const sendMessage = (message) => {
     if (!message.trim()) return;
 
     const messageData = {
-      sender: { id: userId, name: userName, role },
-      data: message,
-      timestamp: new Date()
+      sender: { userId, name: userName, role },
+      content: message,
+      timestamp: new Date().toISOString(),
     };
 
     socketRef.current.emit('chat-message', messageData);
-    setMessages(prev => [...prev, messageData]);
+  };
+
+  const handleFileUpload = async (file) => {
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File size exceeds 50MB limit');
+      return;
+    }
+
+    const fileData = {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      url: URL.createObjectURL(file),
+      sender: { userId, name: userName, role },
+      timestamp: new Date().toISOString(),
+    };
+
+    socketRef.current.emit('share-file', fileData);
   };
 
   return (
     <div className="flex flex-col h-screen text-gray-100 bg-gray-900">
-      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+      {/* Top Header */}
+      <header className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
         <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold">{FullDetailsOfCourse?.courseName}</h2>
-          <div className="flex items-center space-x-2">
-            <NetworkStatusIndicator quality={networkQuality} />
-            <span className="px-2 py-1 text-sm bg-gray-700 rounded">
-              {new Date(classDuration * 1000).toISOString().substr(11, 8)}
-            </span>
-          </div>
+          <h1 className="text-xl font-semibold">
+            {courseId} - Video Meeting
+          </h1>
+          <NetworkStatusIndicator quality={state.networkQuality} />
+          <span className="px-3 py-1 text-sm bg-gray-700 rounded-lg">
+            Participants: {state.participants.length + 1}
+          </span>
         </div>
-        <button
-          onClick={() => setParticipantListOpen(!participantListOpen)}
-          className="px-4 py-2 transition-colors bg-gray-700 rounded-lg hover:bg-gray-600"
-        >
-          Participants ({participants.length + 1})
-        </button>
-      </div>
+        
+        <div className="flex space-x-4">
+          <button
+            onClick={() => setState(prev => ({ ...prev, isParticipantListOpen: !prev.isParticipantListOpen }))}
+            className="px-4 py-2 transition-colors bg-gray-700 rounded-lg hover:bg-gray-600"
+          >
+            Participants
+          </button>
+        </div>
+      </header>
 
-      <div className="relative flex-1 overflow-hidden">
+      {/* Main Content Area */}
+      <main className="relative flex-1 overflow-hidden">
         <VideoGrid
-          participants={participants}
+          participants={state.participants}
           localStream={localStream}
           activeSpeaker={activeSpeaker}
-          raisedHands={raisedHands}
+          raisedHands={state.raisedHands}
         />
 
+        {/* Local Video Preview */}
         <div className="fixed w-48 h-32 overflow-hidden border-2 border-white rounded-lg shadow-xl bottom-4 right-4">
-          <video className="object-cover w-full h-full" ref={localVideoref} autoPlay muted playsInline />
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="object-cover w-full h-full"
+          />
         </div>
-      </div>
+      </main>
 
-
-      {/* Controls */}
-      <div className="flex items-center justify-center p-4 space-x-4 bg-gray-800 border-t border-gray-700">
+      {/* Media Controls */}
+      <footer className="p-4 bg-gray-800 border-t border-gray-700">
         <MediaControls
-          role={role}
+          isVideoOn={isVideoOn}
+          isAudioOn={isAudioOn}
+          isRecording={isRecording}
           onToggleVideo={() => toggleMedia('video')}
           onToggleAudio={() => toggleMedia('audio')}
           onScreenShare={screenShare}
@@ -420,57 +358,41 @@ export const VideoMeet = () => {
             endCall();
             navigate(`/course/${courseId}`);
           }}
-          onToggleChat={() => setChatOpen(!chatOpen)}
-          onRaiseHand={handleRaiseHand}
+          onToggleChat={() => setState(prev => ({ ...prev, isChatOpen: !prev.isChatOpen }))}
+          onRaiseHand={() => socketRef.current.emit('raise-hand', !state.raisedHands.has(userId))}
           onStartRecording={startRecording}
           onStopRecording={stopRecording}
-          isRecording={isRecording}
-          onWhiteboardToggle={() => setWhiteboardOpen(!whiteboardOpen)}
+          onWhiteboardToggle={() => setState(prev => ({ ...prev, isWhiteboardOpen: !prev.isWhiteboardOpen }))}
           onFileUpload={handleFileUpload}
         />
-      </div>
+      </footer>
 
-      {/* Chat */}
-      {chatOpen && (
-        <div className="fixed bg-gray-800 rounded-lg shadow-xl bottom-24 right-4 w-80">
-          <ClassChat
-            messages={messages}
-            files={files}
-            onSend={sendMessage}
-            onClose={() => setChatOpen(false)}
-            onFileUpload={handleFileUpload}
-            currentUser={{ id: userId, role }}
-          />
-        </div>
-      )}
+      {/* Overlay Components */}
+      <ClassChat
+        isOpen={state.isChatOpen}
+        messages={state.messages}
+        files={state.files}
+        onClose={() => setState(prev => ({ ...prev, isChatOpen: false }))}
+        onSend={sendMessage}
+        onFileUpload={handleFileUpload}
+      />
 
-      {/* Participant List */}
-      {participantListOpen && (
-        <div className="fixed w-64 p-4 bg-gray-800 rounded-lg shadow-xl right-4 top-20">
-          <ParticipantList
-            participants={participants}
-            raisedHands={raisedHands}
-            onClose={() => setParticipantListOpen(false)}
-            isInstructor={role === 'INSTRUCTOR'}
-            onMuteParticipant={(socketId) => {
-              // implement mute logic
-            }}
-          />
-        </div>
-      )}
+      <ParticipantList
+        isOpen={state.isParticipantListOpen}
+        participants={state.participants}
+        raisedHands={state.raisedHands}
+        onClose={() => setState(prev => ({ ...prev, isParticipantListOpen: false }))}
+        isInstructor={role === 'INSTRUCTOR'}
+      />
 
-      {/* Whiteboard */}
-      {whiteboardOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-90">
-          <div className="w-full h-full max-w-6xl overflow-hidden bg-white rounded-lg">
-            <Whiteboard
-              isInstructor={role === 'INSTRUCTOR'}
-              onClose={() => setWhiteboardOpen(false)}
-              socket={socketRef.current}
-            />
-          </div>
-        </div>
-      )}
+      <Whiteboard
+        isOpen={state.isWhiteboardOpen}
+        onClose={() => setState(prev => ({ ...prev, isWhiteboardOpen: false }))}
+        isInstructor={role === 'INSTRUCTOR'}
+        socket={socketRef.current}
+      />
     </div>
   );
 };
+
+export default VideoMeet;
