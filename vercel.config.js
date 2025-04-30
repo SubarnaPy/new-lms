@@ -1,0 +1,19 @@
+export default {
+    version: 2,
+    builds: [
+      {
+        src: "client/package.json",
+        use: "@vercel/static-build",
+        config: { distDir: "dist" }  // <-- changed from build to dist
+      },
+      {
+        src: "api/**/*.js",
+        use: "@vercel/node"
+      }
+    ],
+    routes: [
+      { src: "/api/(.*)", dest: "/api/$1.js" },
+      { src: "/(.*)", dest: "/client/$1" }
+    ]
+  };
+  
