@@ -4,7 +4,7 @@ import { fetchTopCourses } from "../../Redux/courseSlice";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FaArrowRight } from "react-icons/fa";
-import CourseCard from "./CourseCard";
+import CourseCard from "./courseCard";
 import HighlightText from "../HomePage/HighlightText";
 import { DarkModeContext } from "../../Layouts/DarkModeContext";
 // import { DarkModeContext } from "../../context/DarkModeContext"; // Import DarkModeContext
