@@ -1,437 +1,312 @@
-// import React, { useEffect, useRef, useState } from 'react';
-// import io from 'socket.io-client';
-// import { useDispatch, useSelector } from 'react-redux';
-// import { useNavigate, useParams } from 'react-router-dom';
-// import { toast } from 'react-hot-toast';
-// import { getFullDetailsOfCourse } from '../../../Redux/courseSlice';
-// import { VideoGrid } from './VideoGrid';
-// import { MediaControls } from './MediaControl';
-// import { ClassChat } from './classChat';
-// import { Whiteboard } from './WhitBoard';
-// import { NetworkStatusIndicator } from './NetworkStatusIndicator';
-// import { ParticipantList } from './videoParicipents';
-// import { useMediaStream } from './useMediaStream';
-// import { useRecording } from './useRecording';
-// import { useActiveSpeaker } from './useActiveSpeaker';
-
-const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 import React, { useEffect, useRef, useState } from 'react';
-import io from 'socket.io-client';
-import { useSelector } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { VideoGrid } from './VideoGrid';
-import { MediaControls } from './MediaControl';
-import { ClassChat } from './classChat';
-import { Whiteboard } from './Whiteboard';
-import { NetworkStatusIndicator } from './NetworkStatusIndicator';
-import { ParticipantList } from './ParticipantList';
-import { useMediaStream } from './useMediaStream';
-import { useRecording } from './useRecording';
-import { useActiveSpeaker } from './useActiveSpeaker';
+import io from "socket.io-client";
+import {
+  Badge, IconButton, TextField, Button, Dialog, DialogTitle, DialogContent, List, ListItem,
+  ListItemText, Typography
+} from '@mui/material';
+import {
+  Videocam, VideocamOff, Mic, MicOff, Chat, CallEnd, Person, RaiseHand,
+  RecordVoiceOver
+} from '@mui/icons-material';
+import styles from "../styles/videoComponent.module.css";
+import server from '../environment';
 
-// const SERVER_URL = process.env.REACT_APP_SOCKET_SERVER_URL;
+const server_url = server;
+const peerConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-const VideoMeet = () => {
-  const { courseId } = useParams();
-  const navigate = useNavigate();
-  const socketRef = useRef(null);
-  const localVideoRef = useRef(null);
-  const peerConnections = useRef(new Map());
-  const reconnectAttempts = useRef(0);
-
-  const { role, _id: userId, name: userName } = useSelector((state) => state.auth.data);
-  const [state, setState] = useState({
-    participants: [],
-    messages: [],
-    files: [],
-    raisedHands: new Set(),
-    isChatOpen: false,
-    isWhiteboardOpen: false,
-    isParticipantListOpen: false,
-    networkQuality: 'good',
-    classDuration: 0,
+export default function LiveClassComponent({ userRole }) {
+  const socketRef = useRef();
+  const localVideoRef = useRef();
+  const whiteboardCanvasRef = useRef();
+  const [chatInput, setChatInput] = useState("");
+  const [mediaState, setMediaState] = useState({
+    video: true,
+    audio: true
   });
+  const [classState, setClassState] = useState({
+    participants: [],
+    raisedHands: [],
+    messages: [],
+    isRecording: false,
+    whiteboardData: []
+  });
+  const [uiState, setUiState] = useState({
+    showChat: false,
+    newMessages: 0,
+    isDrawing: false
+  });
+  const connections = useRef({});
+  const [whiteboardColor, setWhiteboardColor] = useState('#000000');
+  const [whiteboardSize, setWhiteboardSize] = useState(5);
 
-  const { 
-    localStream, 
-    toggleMedia, 
-    retryMedia,
-    isVideoOn, 
-    isAudioOn, 
-    screenShare, 
-    endCall 
-  } = useMediaStream(role, userId);
-  
-  const { startRecording, stopRecording, isRecording } = useRecording(localStream);
-  const activeSpeaker = useActiveSpeaker(state.participants);
-
-  // Socket.io connection management
   useEffect(() => {
-    const connectToSocket = async () => {
+    const initMedia = async () => {
       try {
-        socketRef.current = io(SERVER_URL, {
-          auth: {
-            courseId,
-            userId,
-            token: localStorage.getItem('token'),
-          },
-          reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 3000,
-          transports: ['websocket'],
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: mediaState.video,
+          audio: mediaState.audio
         });
-
-        setupSocketListeners();
+        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+        setupSocketConnection(stream);
       } catch (error) {
-        handleConnectionError(error);
+        console.error('Media access error:', error);
       }
     };
 
-    if (courseId && userId) connectToSocket();
-    return () => cleanupConnection();
-  }, [courseId, userId]);
-
-  // Media stream handling
-  useEffect(() => {
-    if (localStream && localVideoRef.current) {
-      localVideoRef.current.srcObject = localStream;
-      updatePeerConnections();
-    }
-  }, [localStream]);
-
-  const setupSocketListeners = () => {
-    const socket = socketRef.current;
-
-    socket.on('connect', () => {
-      reconnectAttempts.current = 0;
-      toast.success('Connected to meeting');
-    });
-
-    socket.on('participants', handleParticipantsUpdate);
-    socket.on('user-joined', handleUserJoined);
-    socket.on('user-left', handleUserLeft);
-    socket.on('offer', handleOffer);
-    socket.on('answer', handleAnswer);
-    socket.on('ice-candidate', handleIceCandidate);
-    socket.on('chat-message', handleNewMessage);
-    socket.on('file-shared', handleFileShared);
-    socket.on('raise-hand', handleRaiseHand);
-    socket.on('disconnect', handleSocketDisconnect);
-    socket.on('connect_error', handleConnectionError);
-  };
-
-  const handleParticipantsUpdate = (participants) => {
-    setState(prev => ({
-      ...prev,
-      participants: participants.map(user => ({
-        userId: user.userId,
-        name: user.name,
-        role: user.role,
-        stream: null,
-      })),
-    }));
-
-    participants
-      .filter(user => user.userId !== userId)
-      .forEach(user => createPeerConnection(user.userId));
-  };
-
-  const handleUserJoined = (userData) => {
-    setState(prev => ({
-      ...prev,
-      participants: [...prev.participants, {
-        userId: userData.userId,
-        name: userData.name,
-        role: userData.role,
-        stream: null,
-      }],
-    }));
-    createPeerConnection(userData.userId);
-  };
-
-  const createPeerConnection = async (userId) => {
-    if (peerConnections.current.has(userId)) return;
-
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        {
-          urls: 'turn:your-turn-server.com:3478',
-          username: 'your-username',
-          credential: 'your-password'
-        }
-      ],
-    });
-
-    pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        socketRef.current.emit('ice-candidate', userId, e.candidate);
-      }
-    };
-
-    pc.ontrack = (e) => {
-      handleRemoteTrack(userId, e.streams[0]);
-    };
-
-    pc.onnegotiationneeded = async () => {
-      try {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        socketRef.current.emit('offer', userId, offer);
-      } catch (error) {
-        console.error('Negotiation error:', error);
-      }
-    };
-
-    if (localStream) {
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    }
-
-    peerConnections.current.set(userId, pc);
-  };
-
-  const handleRemoteTrack = (userId, stream) => {
-    setState(prev => ({
-      ...prev,
-      participants: prev.participants.map(p => 
-        p.userId === userId ? { ...p, stream } : p
-      ),
-    }));
-  };
-
-  const handleOffer = async (fromUserId, offer) => {
-    const pc = await createPeerConnection(fromUserId);
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socketRef.current.emit('answer', fromUserId, answer);
-  };
-
-  const handleAnswer = async (fromUserId, answer) => {
-    const pc = peerConnections.current.get(fromUserId);
-    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
-  };
-
-  const handleIceCandidate = (fromUserId, candidate) => {
-    const pc = peerConnections.current.get(fromUserId);
-    if (pc) pc.addIceCandidate(new RTCIceCandidate(candidate));
-  };
-
-  const handleUserLeft = (leftUserId) => {
-    const pc = peerConnections.current.get(leftUserId);
-    if (pc) {
-      pc.close();
-      peerConnections.current.delete(leftUserId);
-    }
-    setState(prev => ({
-      ...prev,
-      participants: prev.participants.filter(p => p.userId !== leftUserId),
-    }));
-  };
-
-  const updatePeerConnections = () => {
-    peerConnections.current.forEach(pc => {
-      const senders = pc.getSenders();
-      localStream?.getTracks().forEach(track => {
-        const sender = senders.find(s => s.track?.kind === track.kind);
-        sender ? sender.replaceTrack(track) : pc.addTrack(track, localStream);
-      });
-    });
-  };
-
-  const handleRaiseHand = (userId, isRaised) => {
-    setState(prev => ({
-      ...prev,
-      raisedHands: new Set(
-        isRaised
-          ? [...prev.raisedHands, userId]
-          : [...prev.raisedHands].filter(id => id !== userId)
-      )
-    }));
-  };
-
-  const handleNewMessage = (message) => {
-    setState(prev => ({ ...prev, messages: [...prev.messages, message] }));
-  };
-
-  const handleFileShared = (file) => {
-    setState(prev => ({ ...prev, files: [...prev.files, file] }));
-  };
-
-  const handleSocketDisconnect = (reason) => {
-    if (reason === 'io server disconnect') {
-      socketRef.current.connect();
-    }
-    toast.error('Disconnected from server. Reconnecting...');
-  };
-
-  const handleConnectionError = (error) => {
-    if (reconnectAttempts.current++ > 5) {
-      toast.error('Failed to connect. Please check your network.');
-      navigate(`/course/${courseId}`);
-    }
-  };
-
-  const cleanupConnection = () => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
-    peerConnections.current.forEach(pc => pc.close());
-    peerConnections.current.clear();
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-    }
-  };
-
-  const sendMessage = (message) => {
-    if (!message.trim()) return;
-
-    const messageData = {
-      sender: { userId, name: userName, role },
-      content: message,
-      timestamp: new Date().toISOString(),
-    };
-
-    socketRef.current.emit('chat-message', messageData);
-  };
-
-  const handleFileUpload = async (file) => {
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('File size exceeds 50MB limit');
-      return;
-    }
-
-    const fileData = {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      url: URL.createObjectURL(file),
-      sender: { userId, name: userName, role },
-      timestamp: new Date().toISOString(),
-    };
-
-    socketRef.current.emit('share-file', fileData);
-  };
-
-  // Network quality monitoring
-  useEffect(() => {
-    const handleNetworkChange = () => {
-      const connection = navigator.connection;
-      if (connection) {
-        const quality = connection.downlink > 1 ? 'good' : 
-                       connection.downlink > 0.5 ? 'fair' : 'poor';
-        setState(prev => ({ ...prev, networkQuality: quality }));
-      }
-    };
-
-    if (navigator.connection) {
-      navigator.connection.addEventListener('change', handleNetworkChange);
-    }
-    return () => {
-      if (navigator.connection) {
-        navigator.connection.removeEventListener('change', handleNetworkChange);
-      }
-    };
+    initMedia();
+    return () => cleanup();
   }, []);
 
+  const setupSocketConnection = (stream) => {
+    socketRef.current = io(server_url, {
+      auth: { token: localStorage.getItem('lmsToken') }
+    });
+
+    socketRef.current.on('connect', () => {
+      if (userRole === 'teacher') {
+        socketRef.current.emit('create-class', {
+          subject: 'Live Class',
+          teacherId: localStorage.getItem('userId')
+        });
+      } else {
+        socketRef.current.emit('join-class', window.location.pathname.split('/').pop());
+      }
+    });
+
+    socketRef.current.on('class-state', handleClassStateUpdate);
+    socketRef.current.on('participant-update', updateParticipants);
+    socketRef.current.on('whiteboard-update', updateWhiteboard);
+    socketRef.current.on('chat-message', handleNewMessage);
+    socketRef.current.on('hand-raised', handleRaisedHand);
+    socketRef.current.on('recording-state', handleRecordingState);
+    socketRef.current.on('force-mute', handleForceMute);
+  };
+
+  const handleClassStateUpdate = (data) => {
+    setClassState(prev => ({ ...prev, ...data }));
+  };
+
+  const updateParticipants = (participants) => {
+    setClassState(prev => ({ ...prev, participants }));
+  };
+
+  const updateWhiteboard = (dataUrl) => {
+    const canvas = whiteboardCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => ctx.drawImage(img, 0, 0);
+  };
+
+  const handleNewMessage = (msg) => {
+    setClassState(prev => ({
+      ...prev,
+      messages: [...prev.messages, msg]
+    }));
+    setUiState(prev => ({
+      ...prev,
+      newMessages: prev.showChat ? 0 : prev.newMessages + 1
+    }));
+  };
+
+  const handleRaisedHand = (userId) => {
+    setClassState(prev => ({
+      ...prev,
+      raisedHands: [...new Set([...prev.raisedHands, userId])]
+    }));
+  };
+
+  const handleRecordingState = (state) => {
+    setClassState(prev => ({ ...prev, isRecording: state }));
+  };
+
+  const handleForceMute = () => {
+    setMediaState(prev => ({ ...prev, audio: false }));
+    updateMediaTracks('audio');
+  };
+
+  const toggleMedia = (type) => {
+    const newState = { ...mediaState, [type]: !mediaState[type] };
+    setMediaState(newState);
+    updateMediaTracks(type);
+  };
+
+  const updateMediaTracks = (type) => {
+    if (localVideoRef.current?.srcObject) {
+      localVideoRef.current.srcObject.getTracks().forEach(track => {
+        if (track.kind === type) track.enabled = !track.enabled;
+      });
+    }
+  };
+
+  const raiseHand = () => {
+    socketRef.current.emit('raise-hand');
+  };
+
+  const toggleRecording = () => {
+    if (userRole === 'teacher') {
+      socketRef.current.emit('toggle-recording');
+    }
+  };
+
+  const endClass = () => {
+    if (userRole === 'teacher') {
+      socketRef.current.emit('end-class');
+    }
+    window.location.href = '/lms/dashboard';
+  };
+
+  const sendMessage = () => {
+    if (chatInput.trim()) {
+      socketRef.current.emit('chat-message', {
+        sender: localStorage.getItem('userName'),
+        content: chatInput.trim()
+      });
+      setChatInput('');
+    }
+  };
+
+  const cleanup = () => {
+    if (localVideoRef.current?.srcObject) {
+      localVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
+    }
+    Object.values(connections.current).forEach(pc => pc.close());
+    socketRef.current?.disconnect();
+  };
+
+  useEffect(() => {
+    if (userRole === 'teacher') {
+      initWhiteboard();
+    }
+  }, [whiteboardColor, whiteboardSize]);
+
+  const initWhiteboard = () => {
+    const canvas = whiteboardCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    canvas.width = 800;
+    canvas.height = 600;
+    ctx.strokeStyle = whiteboardColor;
+    ctx.lineWidth = whiteboardSize;
+    ctx.lineCap = 'round';
+
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    const startDrawing = (e) => {
+      isDrawing = true;
+      [lastX, lastY] = [e.offsetX, e.offsetY];
+    };
+
+    const draw = (e) => {
+      if (!isDrawing) return;
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+      [lastX, lastY] = [e.offsetX, e.offsetY];
+
+      const dataUrl = canvas.toDataURL();
+      socketRef.current.emit('whiteboard-update', dataUrl);
+    };
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('mouseout', () => isDrawing = false);
+  };
+
   return (
-    <div className="flex flex-col h-screen text-gray-100 bg-gray-900">
-      {/* Top Header */}
-      <header className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-semibold">
-            {courseId} - Video Meeting
-          </h1>
-          <NetworkStatusIndicator quality={state.networkQuality} />
-          <span className="px-3 py-1 text-sm bg-gray-700 rounded-lg">
-            Participants: {state.participants.length + 1}
-          </span>
-        </div>
-        
-        <div className="flex space-x-4">
-          <button
-            onClick={() => setState(prev => ({ ...prev, isParticipantListOpen: !prev.isParticipantListOpen }))}
-            className="px-4 py-2 transition-colors bg-gray-700 rounded-lg hover:bg-gray-600"
-          >
-            Participants
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="relative flex-1 overflow-hidden">
-        <VideoGrid
-          participants={state.participants}
-          localStream={localStream}
-          activeSpeaker={activeSpeaker}
-          raisedHands={state.raisedHands}
-        />
-
-        {/* Local Video Preview */}
-        <div className="fixed w-48 h-32 overflow-hidden border-2 border-white rounded-lg shadow-xl bottom-4 right-4">
+    <div className={styles.liveClassContainer}>
+      <div className={styles.videoGrid}>
+        <video ref={localVideoRef} autoPlay muted className={styles.localVideo} />
+        {classState.participants.map(p => (
           <video
-            ref={localVideoRef}
+            key={p.id}
             autoPlay
-            muted
-            playsInline
-            className="object-cover w-full h-full"
+            ref={ref => {
+              if (ref && p.stream) ref.srcObject = p.stream;
+            }}
+            className={styles.remoteVideo}
           />
-        </div>
-      </main>
+        ))}
+      </div>
 
-      {/* Media Controls */}
-      <footer className="p-4 bg-gray-800 border-t border-gray-700">
-        <MediaControls
-          isVideoOn={isVideoOn}
-          isAudioOn={isAudioOn}
-          isRecording={isRecording}
-          showVideoRetry={!isVideoOn}
-          showAudioRetry={!isAudioOn}
-          onToggleVideo={() => toggleMedia('video')}
-          onToggleAudio={() => toggleMedia('audio')}
-          onRetryVideo={() => retryMedia('video')}
-          onRetryAudio={() => retryMedia('audio')}
-          onScreenShare={screenShare}
-          onEndCall={() => {
-            endCall();
-            navigate(`/course/${courseId}`);
-          }}
-          onToggleChat={() => setState(prev => ({ ...prev, isChatOpen: !prev.isChatOpen }))}
-          onRaiseHand={() => socketRef.current.emit('raise-hand', !state.raisedHands.has(userId))}
-          onStartRecording={startRecording}
-          onStopRecording={stopRecording}
-          onWhiteboardToggle={() => setState(prev => ({ ...prev, isWhiteboardOpen: !prev.isWhiteboardOpen }))}
-          onFileUpload={handleFileUpload}
-        />
-      </footer>
+      <div className={styles.controlBar}>
+        <IconButton onClick={() => toggleMedia('video')}>
+          {mediaState.video ? <Videocam /> : <VideocamOff />}
+        </IconButton>
+        <IconButton onClick={() => toggleMedia('audio')}>
+          {mediaState.audio ? <Mic /> : <MicOff />}
+        </IconButton>
+        <IconButton onClick={raiseHand}>
+          <RaiseHand />
+        </IconButton>
 
-      {/* Overlay Components */}
-      <ClassChat
-        isOpen={state.isChatOpen}
-        messages={state.messages}
-        files={state.files}
-        onClose={() => setState(prev => ({ ...prev, isChatOpen: false }))}
-        onSend={sendMessage}
-        onFileUpload={handleFileUpload}
-      />
+        {userRole === 'teacher' && (
+          <>
+            <IconButton onClick={toggleRecording} color={classState.isRecording ? 'secondary' : 'default'}>
+              <RecordVoiceOver />
+            </IconButton>
+            <Button variant="contained" color="error" onClick={endClass}>
+              End Class
+            </Button>
+          </>
+        )}
 
-      <ParticipantList
-        isOpen={state.isParticipantListOpen}
-        participants={state.participants}
-        raisedHands={state.raisedHands}
-        onClose={() => setState(prev => ({ ...prev, isParticipantListOpen: false }))}
-        isInstructor={role === 'INSTRUCTOR'}
-      />
+        <IconButton onClick={() => setUiState(prev => ({ ...prev, showChat: !prev.showChat, newMessages: 0 }))}>
+          <Badge badgeContent={uiState.newMessages} color="secondary">
+            <Chat />
+          </Badge>
+        </IconButton>
+      </div>
 
-      <Whiteboard
-        isOpen={state.isWhiteboardOpen}
-        onClose={() => setState(prev => ({ ...prev, isWhiteboardOpen: false }))}
-        isInstructor={role === 'INSTRUCTOR'}
-        socket={socketRef.current}
-      />
+      <div className={styles.sidebar}>
+        <Typography variant="h6">Participants</Typography>
+        <List>
+          {classState.participants.map(p => (
+            <ListItem key={p.id}>
+              <Person />
+              <ListItemText primary={p.name || 'Anonymous'} secondary={p.isTeacher ? 'Teacher' : 'Student'} />
+              {classState.raisedHands.includes(p.id) && <RaiseHand color="action" />}
+            </ListItem>
+          ))}
+        </List>
+
+        {userRole === 'teacher' && (
+          <div className={styles.whiteboardContainer}>
+            <Typography variant="h6">Whiteboard</Typography>
+            <canvas ref={whiteboardCanvasRef} />
+            <div className={styles.whiteboardControls}>
+              <input type="color" value={whiteboardColor} onChange={(e) => setWhiteboardColor(e.target.value)} />
+              <input type="range" min="1" max="20" value={whiteboardSize}
+                onChange={(e) => setWhiteboardSize(Number(e.target.value))} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Dialog open={uiState.showChat} onClose={() => setUiState(prev => ({ ...prev, showChat: false }))}>
+        <DialogTitle>Class Chat</DialogTitle>
+        <DialogContent>
+          <div className={styles.chatMessages}>
+            {classState.messages.map((msg, index) => (
+              <div key={index} className={styles.chatMessage}>
+                <Typography variant="subtitle2">{msg.sender}</Typography>
+                <Typography variant="body1">{msg.content}</Typography>
+              </div>
+            ))}
+          </div>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Type your message..."
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
-
-export default VideoMeet;
+}
