@@ -8,10 +8,10 @@ import {
   Videocam, VideocamOff, Mic, MicOff, Chat, CallEnd, Person, RaiseHand,
   RecordVoiceOver
 } from '@mui/icons-material';
-import styles from "../styles/videoComponent.module.css";
-import server from '../environment';
+// import styles from "../styles/videoComponent.module.css";
+// import server from '../environment';
 
-const server_url = server;
+const server_url = "https://new-mern-backend-cp5h.onrender.com";
 const peerConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
 export default function LiveClassComponent({ userRole }) {
