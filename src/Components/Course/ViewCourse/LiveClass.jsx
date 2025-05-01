@@ -5,6 +5,8 @@ import { toast } from 'react-hot-toast';
 import { getFullDetailsOfCourse } from '../../../Redux/courseSlice';
 // import LoadingSpinner from '../../Common/LoadingSpinner';
 import LiveClassComponent from './VideoMeet';
+import sha256 from 'crypto-js/sha256';
+
 
 const CourseAccessValidator = () => {
   const { courseId } = useParams();
@@ -63,7 +65,10 @@ const CourseAccessValidator = () => {
     return null; // Redirect handled in useEffect
   }
 
-  return <LiveClassComponent userRole={role} />;
+
+  const roomId = sha256(courseId).toString().substring(0, 12);
+  return <LiveClassComponent roomId={roomId} userRole={role} />;
+  
 
 ;
 };

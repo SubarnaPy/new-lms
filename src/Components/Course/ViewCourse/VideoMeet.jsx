@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 
 const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
-const ROOM_ID = 'classroom-101';
 
-export default function LiveClassComponent() {
+
+export default function LiveClassComponent({ roomId, userRole }) {
+  const ROOM_ID = roomId;
+
   const [socket, setSocket] = useState(null);
   const [usersInRoom, setUsersInRoom] = useState([]);
   const localVideoRef = useRef();
