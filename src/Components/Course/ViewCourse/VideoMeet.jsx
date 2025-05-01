@@ -20,16 +20,15 @@ export default function LiveClassComponent({ roomId, userRole }) {
   const [socket, setSocket] = useState(null);
   const [usersInRoom, setUsersInRoom] = useState([]);
   const [localStream, setLocalStream] = useState(null);
+  const [remoteStreams, setRemoteStreams] = useState({});
   const [currentUserId, setCurrentUserId] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
 
   const localVideoRef = useRef();
-  const remoteVideosRef = useRef({});
   const peersRef = useRef({});
   const chatContainerRef = useRef();
 
-  // WebRTC Configuration
   const getPeerConfiguration = () => ({
     iceServers: ICE_SERVERS,
     iceTransportPolicy: 'all',
@@ -37,6 +36,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
     rtcpMuxPolicy: 'require'
   });
 
+  // Initialize local media
   useEffect(() => {
     const initializeMediaStream = async () => {
       try {
@@ -45,7 +45,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
           audio: true
         });
         setLocalStream(stream);
-        localVideoRef.current.srcObject = stream;
+        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
       } catch (error) {
         console.error('Error accessing media devices:', error);
         alert('Failed to access camera and microphone. Please check permissions.');
@@ -55,6 +55,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
     initializeMediaStream();
   }, []);
 
+  // Setup Socket.IO and WebRTC signaling
   useEffect(() => {
     if (!localStream) return;
 
@@ -64,9 +65,9 @@ export default function LiveClassComponent({ roomId, userRole }) {
     });
 
     setSocket(socketConnection);
-    setCurrentUserId(socketConnection.id);
 
     socketConnection.on('connect', () => {
+      setCurrentUserId(socketConnection.id);
       socketConnection.emit('join-room', roomId);
     });
 
@@ -86,7 +87,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
   }, [localStream]);
 
   const handleUsersInRoom = (users) => {
-    setUsersInRoom(users.filter(user => user !== currentUserId));
+    setUsersInRoom(users.filter(id => id !== currentUserId));
     users.forEach(userId => {
       if (userId !== currentUserId && !peersRef.current[userId]) {
         createPeerConnection(userId);
@@ -106,10 +107,11 @@ export default function LiveClassComponent({ roomId, userRole }) {
       peersRef.current[userId].close();
       delete peersRef.current[userId];
     }
-    if (remoteVideosRef.current[userId]) {
-      remoteVideosRef.current[userId].remove();
-      delete remoteVideosRef.current[userId];
-    }
+    setRemoteStreams(prev => {
+      const updated = { ...prev };
+      delete updated[userId];
+      return updated;
+    });
   };
 
   const createPeerConnection = (userId) => {
@@ -118,36 +120,21 @@ export default function LiveClassComponent({ roomId, userRole }) {
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit('ice-candidate', {
-          target: userId,
-          candidate: event.candidate
-        });
+        socket.emit('ice-candidate', { target: userId, candidate: event.candidate });
       }
     };
 
     pc.ontrack = (event) => {
-      const videoElement = document.createElement('video');
-      videoElement.id = userId;
-      videoElement.autoplay = true;
-      videoElement.playsInline = true;
-      videoElement.className = 'object-cover w-full h-full rounded-lg';
-      videoElement.srcObject = event.streams[0];
-      remoteVideosRef.current[userId] = videoElement;
-      document.getElementById('remote-videos-container').appendChild(videoElement);
+      setRemoteStreams(prev => ({ ...prev, [userId]: event.streams[0] }));
     };
 
-    localStream.getTracks().forEach(track => 
-      pc.addTrack(track, localStream)
-    );
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
     if (userRole === 'teacher') {
       pc.createOffer()
         .then(offer => pc.setLocalDescription(offer))
         .then(() => {
-          socket.emit('offer', {
-            target: userId,
-            sdp: pc.localDescription
-          });
+          socket.emit('offer', { target: userId, sdp: pc.localDescription });
         });
     }
 
@@ -157,14 +144,9 @@ export default function LiveClassComponent({ roomId, userRole }) {
   const handleOffer = async ({ sdp, caller }) => {
     const pc = peersRef.current[caller] || createPeerConnection(caller);
     await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-    
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    
-    socket.emit('answer', {
-      target: caller,
-      sdp: pc.localDescription
-    });
+    socket.emit('answer', { target: caller, sdp: pc.localDescription });
   };
 
   const handleAnswer = async ({ sdp, responder }) => {
@@ -179,19 +161,15 @@ export default function LiveClassComponent({ roomId, userRole }) {
 
   const handleChatMessage = (message) => {
     setChatMessages(prev => [...prev, message]);
-    chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   };
 
   const sendMessage = (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-
-    const message = {
-      text: newMessage,
-      sender: currentUserId,
-      timestamp: new Date().toISOString()
-    };
-
+    const message = { text: newMessage, sender: currentUserId, timestamp: new Date().toISOString() };
     socket.emit('chat-message', message);
     setNewMessage('');
   };
@@ -208,9 +186,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
           </div>
           <div className="flex items-center space-x-4">
             <span className={`px-3 py-1 rounded-full ${
-              userRole === 'teacher' 
-                ? 'bg-indigo-100 text-indigo-800' 
-                : 'bg-green-100 text-green-800'
+              userRole === 'teacher' ? 'bg-indigo-100 text-indigo-800' : 'bg-green-100 text-green-800'
             }`}>
               {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
             </span>
@@ -230,9 +206,9 @@ export default function LiveClassComponent({ roomId, userRole }) {
               <li className="flex items-center text-sm font-medium">
                 <span className="truncate">{currentUserId} (You)</span>
               </li>
-              {usersInRoom.map(userId => (
-                <li key={userId} className="flex items-center text-sm">
-                  <span className="truncate">{userId}</span>
+              {usersInRoom.map(id => (
+                <li key={id} className="flex items-center text-sm">
+                  <span className="truncate">{id}</span>
                 </li>
               ))}
             </ul>
@@ -249,9 +225,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
                 Upload File
               </button>
               <div className="space-y-2">
-                <div className="p-2 text-sm rounded cursor-pointer bg-gray-50 hover:bg-gray-100">
-                  Course_Syllabus.pdf
-                </div>
+                {/* List uploaded files here */}
               </div>
             </div>
           )}
@@ -263,14 +237,11 @@ export default function LiveClassComponent({ roomId, userRole }) {
           <div className="p-4 bg-white rounded-lg shadow">
             <div className="flex items-center justify-between mb-4">
               <h2 className="flex items-center text-lg font-semibold">
-                <VideoCameraIcon className="w-5 h-5 mr-2" />
-                Live Stream
+                <VideoCameraIcon className="w-5 h-5 mr-2" /> Live Stream
               </h2>
-              <div className="flex space-x-2">
-                <button className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
-                  <SpeakerWaveIcon className="w-5 h-5" />
-                </button>
-              </div>
+              <button className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+                <SpeakerWaveIcon className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -278,45 +249,44 @@ export default function LiveClassComponent({ roomId, userRole }) {
               <div className={`relative overflow-hidden bg-gray-800 rounded-lg aspect-video ${
                 userRole === 'teacher' ? 'md:col-span-2 md:row-span-2' : ''
               }`}>
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="object-cover w-full h-full"
-                />
+                <video ref={localVideoRef} autoPlay muted playsInline className="object-cover w-full h-full" />
                 <span className="absolute px-2 py-1 text-sm text-white rounded bottom-2 left-2 bg-black/50">
                   {userRole === 'teacher' ? 'Your Broadcast' : 'Main Stream'}
                 </span>
               </div>
 
               {/* Remote Videos */}
-              <div
-                id="remote-videos-container"
-                className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2"
-              />
+              <div id="remote-videos-container" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2">
+                {Object.entries(remoteStreams).map(([id, stream]) => (
+                  <div key={id} className="relative overflow-hidden bg-gray-800 rounded-lg aspect-video">
+                    <video
+                      autoPlay
+                      playsInline
+                      ref={el => { if (el) el.srcObject = stream; }}
+                      className="object-cover w-full h-full"
+                    />
+                    <span className="absolute px-2 py-1 text-sm text-white rounded bottom-2 left-2 bg-black/50">
+                      {id === currentUserId ? 'You' : id}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Chat Section */}
           <div className="p-4 bg-white rounded-lg shadow">
             <h2 className="flex items-center mb-4 text-lg font-semibold">
-              <ChatBubbleLeftIcon className="w-5 h-5 mr-2" />
-              Class Chat
+              <ChatBubbleLeftIcon className="w-5 h-5 mr-2" /> Class Chat
             </h2>
-            <div
-              ref={chatContainerRef}
-              className="h-48 mb-4 space-y-3 overflow-y-auto"
-            >
-              {chatMessages.map((message, index) => (
+            <div ref={chatContainerRef} className="h-48 mb-4 space-y-3 overflow-y-auto">
+              {chatMessages.map((message, idx) => (
                 <div
-                  key={index}
+                  key={idx}
                   className={`flex ${message.sender === currentUserId ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`p-3 rounded-lg max-w-[75%] ${
-                    message.sender === currentUserId
-                      ? 'bg-indigo-100'
-                      : 'bg-gray-100'
+                    message.sender === currentUserId ? 'bg-indigo-100' : 'bg-gray-100'
                   }`}>
                     <p className="text-sm">{message.text}</p>
                     <span className="text-xs text-gray-500">
@@ -330,16 +300,11 @@ export default function LiveClassComponent({ roomId, userRole }) {
               <input
                 type="text"
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={e => setNewMessage(e.target.value)}
                 placeholder="Type message..."
                 className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              <button
-                type="submit"
-                className="px-4 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-              >
-                Send
-              </button>
+              <button type="submit" className="px-4 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Send</button>
             </form>
           </div>
         </div>
