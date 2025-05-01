@@ -266,14 +266,10 @@ const [screenSharerId, setScreenSharerId] = useState(null);
     // Track media streams
     const remoteStream = new MediaStream();
     pc.ontrack = ({ track, streams }) => {
-
-      if (streams && streams[0]) {
-        setPeers(prev => ({ ...prev, [peerId]: streams[0] }));
-      }
-      // track.onunmute = () => {
-      //   remoteStream.addTrack(track);
-      //   setPeers(prev => ({ ...prev, [peerId]: remoteStream }));
-      // };
+      track.onunmute = () => {
+        remoteStream.addTrack(track);
+        setPeers(prev => ({ ...prev, [peerId]: remoteStream }));
+      };
     };
   
     // Add local tracks
@@ -324,7 +320,7 @@ const [screenSharerId, setScreenSharerId] = useState(null);
           {userList.map(({ id, role }) => (
             <div key={id} className="p-2 bg-gray-700 rounded-lg">
               <div className="text-sm font-medium">
-                {userRole === 'INSTRUCTOR' ? '👨🏫 Instructor' : `👤 Student ${id.slice(0, 5)}`}
+                {role === 'INSTRUCTOR' ? '👨🏫 Instructor' : `👤 Student ${id.slice(0, 5)}`}
               </div>
               {peers[id] && (
                 <video
