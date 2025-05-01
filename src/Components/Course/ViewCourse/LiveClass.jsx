@@ -63,7 +63,9 @@ const CourseAccessValidator = () => {
     return null; // Redirect handled in useEffect
   }
 
-  return <LiveClassComponent />;
+  return <LiveClassComponent userRole={role} />;
+
+;
 };
 
 export default CourseAccessValidator;
