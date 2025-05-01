@@ -42,7 +42,7 @@ const ChatComponent = ({ courseId, userId }) => {
       return;
     }
 
-    socketRef.current = io("http://localhost:5001", {
+    socketRef.current = io("https://new-mern-backend-cp5h.onrender.com", {
       auth: { token },
     });
 
@@ -51,7 +51,7 @@ const ChatComponent = ({ courseId, userId }) => {
     const fetchChatHistory = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5001/api/v1/chat/${courseId}`,
+          `https://new-mern-backend-cp5h.onrender.com/api/v1/chat/${courseId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
