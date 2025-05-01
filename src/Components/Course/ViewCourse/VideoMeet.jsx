@@ -218,7 +218,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
             <div className="p-4 bg-white rounded-lg shadow">
               <h2 className="flex items-center mb-2 text-lg font-semibold">
                 <DocumentTextIcon className="w-5 h-5 mr-2" />
-                Class Materials
+                Class CEHB Materials
               </h2>
               <button className="flex items-center justify-center w-full p-2 mb-3 text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">
                 <ArrowUpTrayIcon className="w-5 h-5 mr-2" />
