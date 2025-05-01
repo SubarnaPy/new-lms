@@ -130,7 +130,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
 
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-    if (userRole === 'teacher') {
+    if (userRole === 'INSTRUCTOR') {
       pc.createOffer()
         .then(offer => pc.setLocalDescription(offer))
         .then(() => {
@@ -181,7 +181,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
           <div className="flex items-center space-x-4">
             <AcademicCapIcon className="w-8 h-8 text-indigo-600" />
             <h1 className="text-2xl font-bold text-gray-900">
-              {userRole === 'teacher' ? 'Teaching' : 'Attending'} - Room {roomId}
+              {userRole === 'INSTRUCTOR' ? 'Teaching' : 'Attending'} - Room {roomId}
             </h1>
           </div>
           <div className="flex items-center space-x-4">
@@ -214,7 +214,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
             </ul>
           </div>
 
-          {userRole === 'teacher' && (
+          {userRole === 'INSTRUCTOR' && (
             <div className="p-4 bg-white rounded-lg shadow">
               <h2 className="flex items-center mb-2 text-lg font-semibold">
                 <DocumentTextIcon className="w-5 h-5 mr-2" />
@@ -247,11 +247,11 @@ export default function LiveClassComponent({ roomId, userRole }) {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {/* Local Video */}
               <div className={`relative overflow-hidden bg-gray-800 rounded-lg aspect-video ${
-                userRole === 'teacher' ? 'md:col-span-2 md:row-span-2' : ''
+                userRole === 'INSTRUCTOR' ? 'md:col-span-2 md:row-span-2' : ''
               }`}>
                 <video ref={localVideoRef} autoPlay muted playsInline className="object-cover w-full h-full" />
                 <span className="absolute px-2 py-1 text-sm text-white rounded bottom-2 left-2 bg-black/50">
-                  {userRole === 'teacher' ? 'Your Broadcast' : 'Main Stream'}
+                  {userRole === 'INSTRUCTOR' ? 'Your Broadcast' : 'Main Stream'}
                 </span>
               </div>
 
