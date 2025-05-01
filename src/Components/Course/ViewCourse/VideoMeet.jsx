@@ -6,6 +6,7 @@ const ROOM_ID = 'classroom-101';
 
 export default function LiveClassComponent() {
   const [socket, setSocket] = useState(null);
+  const [usersInRoom, setUsersInRoom] = useState([]);
   const localVideoRef = useRef();
   const remoteVideoContainerRef = useRef();
   const peersRef = useRef({});
@@ -22,6 +23,9 @@ export default function LiveClassComponent() {
       socketConnection.emit('join-room', ROOM_ID);
 
       socketConnection.on('all-users', (users) => {
+        console.log(`Users in room ${ROOM_ID}:`, users); // Log all users in the room
+        setUsersInRoom(users); // Set users in room state
+
         users.forEach(userId => {
           const pc = createPeerConnection(userId, socketConnection);
           peersRef.current[userId] = pc;
@@ -39,6 +43,8 @@ export default function LiveClassComponent() {
       });
 
       socketConnection.on('user-joined', (userId) => {
+        console.log(`User joined: ${userId}`); // Log when a new user joins
+        setUsersInRoom(prevUsers => [...prevUsers, userId]); // Add new user to the list
         const pc = createPeerConnection(userId, socketConnection);
         peersRef.current[userId] = pc;
 
@@ -82,6 +88,8 @@ export default function LiveClassComponent() {
       });
 
       socketConnection.on('user-disconnected', (userId) => {
+        console.log(`User disconnected: ${userId}`); // Log when a user disconnects
+        setUsersInRoom(prevUsers => prevUsers.filter(user => user !== userId)); // Remove user from the list
         if (peersRef.current[userId]) {
           peersRef.current[userId].close();
           delete peersRef.current[userId];
@@ -89,6 +97,9 @@ export default function LiveClassComponent() {
 
         const video = document.getElementById(userId);
         if (video) video.remove();
+
+        // Log the remaining users in the room
+        console.log(`Users in room ${ROOM_ID} after disconnection:`, Object.keys(peersRef.current));
       });
     });
 
@@ -132,7 +143,14 @@ export default function LiveClassComponent() {
     <div>
       <h1>Live Classroom</h1>
       <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '300px' }} />
-      <div ref={remoteVideoContainerRef} style={{ display: 'flex', flexWrap: 'wrap' }} />
+      <div ref={remoteVideoContainerRef} style={{ display: 'flex', flexWrap: 'wrap' }}>
+        {usersInRoom.map(userId => (
+          <div key={userId} style={{ textAlign: 'center', margin: '10px' }}>
+            <div>{userId}</div>
+            <video id={userId} autoPlay playsInline style={{ width: '300px' }} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
