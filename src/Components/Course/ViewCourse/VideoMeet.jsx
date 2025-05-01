@@ -8,6 +8,7 @@ const socket = io(SERVER_URL);
 export default function LiveClassComponent({ roomId, userRole }) {
   const localVideoRef = useRef();
   const [peers, setPeers] = useState({});
+  const [userList, setUserList] = useState([]);
   const localStreamRef = useRef();
   const pcMap = useRef({});
 
@@ -20,16 +21,18 @@ export default function LiveClassComponent({ roomId, userRole }) {
       socket.emit('join-room', roomId, { role: userRole });
 
       socket.on('all-users', users => {
+        setUserList(users);
         if (userRole === 'INSTRUCTOR') {
           users.forEach(({ id }) => createPeerConnection(id, true));
         }
       });
 
       socket.on('user-joined', ({ id, role }) => {
+        setUserList(prev => [...prev, { id, role }]);
         if (userRole === 'INSTRUCTOR') {
           createPeerConnection(id, true);
         } else {
-          createPeerConnection(id, false); // just prepare to receive offer
+          createPeerConnection(id, false);
         }
       });
 
@@ -67,6 +70,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
           delete copy[id];
           return copy;
         });
+        setUserList(prev => prev.filter(u => u.id !== id));
       });
     };
 
@@ -82,24 +86,21 @@ export default function LiveClassComponent({ roomId, userRole }) {
 
     pcMap.current[peerId] = pc;
 
-    // Add local tracks
     localStreamRef.current.getTracks().forEach(track => {
       pc.addTrack(track, localStreamRef.current);
     });
 
-    // Remote stream handling
     const remoteStream = new MediaStream();
     pc.ontrack = ({ track }) => {
       remoteStream.addTrack(track);
     };
+
     pc.onicecandidate = e => {
       if (e.candidate) {
-        socket.emit('ice-candidate', {
-          target: peerId,
-          candidate: e.candidate,
-        });
+        socket.emit('ice-candidate', { target: peerId, candidate: e.candidate });
       }
     };
+
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') {
         setPeers(prev => ({ ...prev, [peerId]: remoteStream }));
@@ -118,21 +119,57 @@ export default function LiveClassComponent({ roomId, userRole }) {
   };
 
   return (
-    <div>
-      <h2>Role: {userRole}</h2>
-      <video ref={localVideoRef} autoPlay playsInline muted width={300} />
-      <h3>Remote Peers:</h3>
-      {Object.entries(peers).map(([id, stream]) => (
-        <video
-          key={id}
-          ref={video => {
-            if (video) video.srcObject = stream;
-          }}
-          autoPlay
-          playsInline
-          width={300}
-        />
-      ))}
+    <div className="flex min-h-screen text-white bg-blue-900">
+      {/* Left sidebar - students list */}
+      <div className="w-1/5 p-2 space-y-4">
+        {userList.map(({ id, role }) => (
+          <div
+            key={id}
+            className="flex items-center justify-between p-2 text-black bg-white rounded-lg shadow-md"
+          >
+            <span>{role === 'INSTRUCTOR' ? 'Instructor' : `Student (${id.slice(0, 5)})`}</span>
+            {userRole === 'INSTRUCTOR' && peers[id] && (
+              <video
+                ref={video => video && (video.srcObject = peers[id])}
+                autoPlay
+                playsInline
+                muted
+                className="w-20 h-16 rounded"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Center - main instructor video */}
+      <div className="flex flex-col items-center justify-center flex-1">
+        <div className="relative">
+          <video
+            ref={userRole === 'INSTRUCTOR' ? localVideoRef : null}
+            autoPlay
+            playsInline
+            muted={userRole !== 'INSTRUCTOR'}
+            className="w-[640px] h-[360px] rounded-xl border"
+          />
+          {userRole !== 'INSTRUCTOR' &&
+            Object.entries(peers).length > 0 && (
+              <video
+                ref={video => video && (video.srcObject = Object.values(peers)[0])}
+                autoPlay
+                playsInline
+                className="absolute inset-0 object-cover w-full h-full rounded-xl"
+              />
+            )}
+          <div className="absolute px-2 py-1 text-white bg-red-600 rounded top-2 left-2">LIVE</div>
+        </div>
+        <div className="mt-4 flex items-center space-x-2 w-[640px]">
+          <input
+            className="flex-1 px-4 py-2 text-black rounded-md"
+            placeholder="Write comment..."
+          />
+          <button className="px-4 py-2 bg-green-600 rounded">Share</button>
+        </div>
+      </div>
     </div>
   );
-};
+}
