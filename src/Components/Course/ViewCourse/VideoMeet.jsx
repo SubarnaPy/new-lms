@@ -144,60 +144,36 @@ const [screenSharerId, setScreenSharerId] = useState(null);
     return () => socket.off('screen-sharing-update', handleScreenSharingUpdate);
   }, []);
 
- // Update the handleRoomData useEffect
-useEffect(() => {
-  const handleRoomData = (data) => {
-    setUserList(prevUsers => {
-      const newUsers = data.users.filter(newUser => 
-        !prevUsers.some(prevUser => prevUser.id === newUser.id)
-      );
-
-      data.users.forEach(({ id, role }) => {
-        if (!pcMap.current[id] && id !== socket.id) {  // Skip self
-          // Instructor connects to everyone
-          if (userRole === 'INSTRUCTOR') {
-            createPeerConnection(id, true);
-          } 
-          // Students connect only to instructor
-          else if (role === 'INSTRUCTOR') {
+  useEffect(() => {
+    const handleRoomData = (data) => {
+      // Merge new users with existing peers
+      setUserList(prevUsers => {
+        const newUsers = data.users.filter(newUser => 
+          !prevUsers.some(prevUser => prevUser.id === newUser.id)
+        );
+        
+        // Reconnect to all users in the room
+        data.users.forEach(({ id }) => {
+          if (!pcMap.current[id] && userRole === 'INSTRUCTOR') {
             createPeerConnection(id, true);
           }
-        }
+        });
+
+        return [...prevUsers.filter(prevUser => 
+          data.users.some(newUser => newUser.id === prevUser.id)
+        ), ...newUsers];
       });
 
-      return [...prevUsers.filter(prevUser => 
-        data.users.some(newUser => newUser.id === prevUser.id)
-      ), ...newUsers];
-    });
+      // Restore other room state
+      setChat(data.chat);
+      setWhiteboardPaths(data.whiteboard);
+      setScreenSharerId(data.screenSharer);
+    };
 
-    setChat(data.chat);
-    setWhiteboardPaths(data.whiteboard);
-    setScreenSharerId(data.screenSharer);
-  };
+    socket.on('room-data', handleRoomData);
+    return () => socket.off('room-data', handleRoomData);
+  }, [userRole]);
 
-  socket.on('room-data', handleRoomData);
-  return () => socket.off('room-data', handleRoomData);
-}, [userRole]);
-
-// Update the ontrack handler in createPeerConnection
-
-
-// Update the user-joined handler
-useEffect(() => {
-  const handleUserJoined = ({ id, role }) => {
-    // Students should connect to new instructor joins
-    if (userRole !== 'INSTRUCTOR' && role === 'INSTRUCTOR') {
-      createPeerConnection(id, true);
-    }
-    // Instructor connects to all new users
-    if (userRole === 'INSTRUCTOR') {
-      createPeerConnection(id, true);
-    }
-  };
-
-  socket.on('user-joined', handleUserJoined);
-  return () => socket.off('user-joined', handleUserJoined);
-}, [userRole]);
   useEffect(() => {
     const handleUserReconnected = (userId) => {
       // Re-establish peer connection if needed
@@ -290,14 +266,14 @@ useEffect(() => {
     // Track media streams
     const remoteStream = new MediaStream();
     pc.ontrack = ({ track, streams }) => {
-      const stream = streams?.[0] || new MediaStream();
-      if (!stream.getTracks().includes(track)) {
-        stream.addTrack(track);
+
+      if (streams && streams[0]) {
+        setPeers(prev => ({ ...prev, [peerId]: streams[0] }));
       }
-      setPeers(prev => ({
-        ...prev,
-        [peerId]: stream
-      }));
+      // track.onunmute = () => {
+      //   remoteStream.addTrack(track);
+      //   setPeers(prev => ({ ...prev, [peerId]: remoteStream }));
+      // };
     };
   
     // Add local tracks
