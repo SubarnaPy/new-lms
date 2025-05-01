@@ -1,0 +1,21 @@
+# Basic build settings
+[build]
+  command = "npm run build"
+  publish = "build"
+
+# SPA routing support (React, Vue, etc.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Optional: Custom headers (including CORS)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer-when-downgrade"
