@@ -4,7 +4,7 @@ import io from 'socket.io-client';
 const SERVER_URL = 'http://localhost:5001';
 const ROOM_ID = 'classroom-101';
 
-export default function LiveClassComponent({ userRole }) {
+export default function LiveClassComponent() {
   const [socket, setSocket] = useState(null);
   const localVideoRef = useRef();
   const remoteVideoContainerRef = useRef();
@@ -46,10 +46,16 @@ export default function LiveClassComponent({ userRole }) {
       });
 
       socketConnection.on('offer', async ({ sdp, caller }) => {
-        const pc = createPeerConnection(caller, socketConnection);
-        peersRef.current[caller] = pc;
+        let pc = peersRef.current[caller];
+        if (!pc) {
+          pc = createPeerConnection(caller, socketConnection);
+          peersRef.current[caller] = pc;
 
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+          stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        }
+
+        if (pc.signalingState !== 'stable') return;
+
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
 
         const answer = await pc.createAnswer();
@@ -62,11 +68,17 @@ export default function LiveClassComponent({ userRole }) {
       });
 
       socketConnection.on('answer', async ({ sdp, responder }) => {
-        await peersRef.current[responder]?.setRemoteDescription(new RTCSessionDescription(sdp));
+        const pc = peersRef.current[responder];
+        if (pc && pc.remoteDescription === null) {
+          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        }
       });
 
       socketConnection.on('ice-candidate', ({ candidate, sender }) => {
-        peersRef.current[sender]?.addIceCandidate(new RTCIceCandidate(candidate));
+        const pc = peersRef.current[sender];
+        if (pc) {
+          pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error(e));
+        }
       });
 
       socketConnection.on('user-disconnected', (userId) => {
@@ -86,7 +98,9 @@ export default function LiveClassComponent({ userRole }) {
   }, []);
 
   const createPeerConnection = (userId, socket) => {
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }], // Google's public STUN server
+    });
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
@@ -105,6 +119,7 @@ export default function LiveClassComponent({ userRole }) {
         remoteVideo.autoplay = true;
         remoteVideo.playsInline = true;
         remoteVideo.style.width = '300px';
+        remoteVideo.style.margin = '5px';
         remoteVideoContainerRef.current.appendChild(remoteVideo);
       }
       remoteVideo.srcObject = event.streams[0];
@@ -115,11 +130,9 @@ export default function LiveClassComponent({ userRole }) {
 
   return (
     <div>
-      <h1>Multi-User Video Chat</h1>
+      <h1>Live Classroom</h1>
       <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '300px' }} />
-      <div ref={remoteVideoContainerRef} />
+      <div ref={remoteVideoContainerRef} style={{ display: 'flex', flexWrap: 'wrap' }} />
     </div>
   );
 }
-
-// export default App;
