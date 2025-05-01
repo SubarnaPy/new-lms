@@ -110,7 +110,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
         if (video) video.remove();
 
         // Log the remaining users in the room
-        console.log(`Users room ${ROOM_ID} after disconnection:`, Object.keys(peersRef.current));
+        console.log(`Users room ${ROOM_ID} aft disconnection:`, Object.keys(peersRef.current));
       });
     });
 
