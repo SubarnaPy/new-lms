@@ -1,7 +1,7 @@
 # Basic build settings
 [build]
   command = "npm run build"
-  publish = "build"
+  publish = "dist"
 
 # SPA routing support (React, Vue, etc.)
 [[redirects]]
