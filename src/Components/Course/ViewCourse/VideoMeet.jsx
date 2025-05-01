@@ -59,10 +59,106 @@ export default function LiveClassComponent({ userRole }) {
     return () => cleanup();
   }, []);
 
+
+
+  // Peer connection management
+const createPeerConnection = (peerId, stream) => {
+  const pc = new RTCPeerConnection(peerConfig);
+  connections.current[peerId] = pc;
+
+  // Add local tracks
+  stream.getTracks().forEach(track => {
+    pc.addTrack(track, stream);
+  });
+
+  // Handle remote tracks
+  pc.ontrack = (e) => {
+    setClassState(prev => ({
+      ...prev,
+      participants: [...prev.participants.filter(p => p.id !== peerId), {
+        id: peerId,
+        stream: e.streams[0]
+      }]
+    }));
+  };
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      socketRef.current.emit('ice-candidate', {
+        targetId: peerId,
+        candidate: e.candidate
+      });
+    }
+  };
+
+  return pc;
+};
+
+const handleNewParticipant = (peerId, stream) => {
+  const pc = createPeerConnection(peerId, stream);
+  
+  pc.createOffer()
+    .then(offer => pc.setLocalDescription(offer))
+    .then(() => {
+      socketRef.current.emit('offer', {
+        targetId: peerId,
+        offer: pc.localDescription
+      });
+    });
+};
+
+const handleReceiveOffer = async ({ senderId, offer }) => {
+  const pc = createPeerConnection(senderId, localVideoRef.current.srcObject);
+  await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  
+  socketRef.current.emit('answer', {
+    targetId: senderId,
+    answer: pc.localDescription
+  });
+};
+
+const handleReceiveAnswer = async ({ senderId, answer }) => {
+  const pc = connections.current[senderId];
+  await pc.setRemoteDescription(new RTCSessionDescription(answer));
+};
+
+const handleReceiveICECandidate = ({ senderId, candidate }) => {
+  const pc = connections.current[senderId];
+  if (pc) {
+    pc.addIceCandidate(new RTCIceCandidate(candidate));
+  }
+};
+
   const setupSocketConnection = (stream) => {
     socketRef.current = io(server_url, {
       auth: { token: localStorage.getItem('lmsToken') }
     });
+
+    socketRef.current.on('existing-participants', (participants) => {
+      participants.forEach(peerId => handleNewParticipant(peerId, stream));
+    });
+  
+    socketRef.current.on('participant-joined', (peerId) => {
+      handleNewParticipant(peerId, stream);
+    });
+
+    socketRef.current.on('offer', handleReceiveOffer);
+  socketRef.current.on('answer', handleReceiveAnswer);
+  socketRef.current.on('ice-candidate', handleReceiveICECandidate);
+
+  socketRef.current.on('participant-left', (peerId) => {
+    setClassState(prev => ({
+      ...prev,
+      participants: prev.participants.filter(p => p.id !== peerId)
+    }));
+    if (connections.current[peerId]) {
+      connections.current[peerId].close();
+      delete connections.current[peerId];
+    }
+  });
 
     socketRef.current.on('connect', () => {
       if (userRole === 'teacher') {
@@ -172,7 +268,11 @@ export default function LiveClassComponent({ userRole }) {
     if (localVideoRef.current?.srcObject) {
       localVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
     }
+    
+    // Close all peer connections
     Object.values(connections.current).forEach(pc => pc.close());
+    connections.current = {};
+    
     socketRef.current?.disconnect();
   };
 
@@ -221,19 +321,27 @@ export default function LiveClassComponent({ userRole }) {
   return (
     <div className="flex flex-col w-full h-screen text-white bg-gray-900 md:flex-row">
   {/* Video Grid */}
-  <div className="grid flex-1 grid-cols-1 gap-4 p-4 overflow-auto md:grid-cols-2 lg:grid-cols-3">
-    <video ref={localVideoRef} autoPlay muted className="object-cover w-full border border-gray-700 rounded-xl aspect-video" />
-    {classState.participants.map((p) => (
-      <video
-        key={p.id}
-        autoPlay
-        ref={(ref) => {
-          if (ref && p.stream) ref.srcObject = p.stream;
-        }}
-        className="object-cover w-full border border-gray-700 rounded-xl aspect-video"
-      />
-    ))}
-  </div>
+ {/* Video Grid */}
+<div className="grid flex-1 grid-cols-1 gap-4 p-4 overflow-auto md:grid-cols-2 lg:grid-cols-3">
+  <video 
+    ref={localVideoRef} 
+    autoPlay 
+    muted 
+    className="object-cover w-full border border-gray-700 rounded-xl aspect-video" 
+  />
+  {classState.participants.map((p) => (
+    <video
+      key={p.id}
+      autoPlay
+      ref={(ref) => {
+        if (ref && !ref.srcObject && p.stream) {
+          ref.srcObject = p.stream;
+        }
+      }}
+      className="object-cover w-full border border-gray-700 rounded-xl aspect-video"
+    />
+  ))}
+</div>
 
   {/* Sidebar */}
   <div className="flex flex-col w-full p-4 bg-gray-800 border-l border-gray-700 md:w-80">
