@@ -66,8 +66,8 @@ const CourseAccessValidator = () => {
   }
 
 
-  const roomId = sha256(courseId).toString().substring(0, 12);
-  return <LiveClassComponent roomId={roomId} userRole={role} />;
+  // const roomId = sha256(courseId).toString().substring(0, 12);
+  return <LiveClassComponent roomId={courseId} userRole={role} />;
   
 
 ;
