@@ -1,133 +1,137 @@
 import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
-import { useParams } from 'react-router-dom'; // ✅ import useParams
+import { useParams } from 'react-router-dom';
 
 const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 
-export default function LiveClassComponent({ roomId, userRole }) {
-
-  // const { roomId } = useParams(); // ✅ get roomId dynamically from URL
-  // const [socket, setSocket] = useState(null);
-  const [usersInRoom, setUsersInRoom] = useState([]);
+export default function LiveClassComponent({roomId, userRole }) {
+  // const { roomId } = useParams();
+  // now store objects with id & role
+  const [usersInRoom, setUsersInRoom] = useState([]); 
   const localVideoRef = useRef();
-  const remoteVideoContainerRef = useRef();
+  const remoteContainerRef = useRef();
   const peersRef = useRef({});
   const localStreamRef = useRef();
 
   useEffect(() => {
     if (!roomId) return;
+    const socket = io(SERVER_URL);
 
-    const socketConnection = io(SERVER_URL);
-    // setSocket(socketConnection);
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        localStreamRef.current = stream;
+        localVideoRef.current.srcObject = stream;
 
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      localStreamRef.current = stream;
-      localVideoRef.current.srcObject = stream;
+        socket.emit('join-room', roomId, { role: userRole });
 
-      socketConnection.emit('join-room', roomId); // ✅ use dynamic roomId
+        // get everyone else (with roles)
+        socket.on('all-users', users => {
+          let toConnect;
+          if (userRole === 'INSTRUCTOR') {
+            toConnect = users; // all peers
+          } else {
+            // only connect to the instructor
+            const instructor = users.find(u => u.role === 'INSTRUCTOR');
+            toConnect = instructor ? [instructor] : [];
+          }
 
-      socketConnection.on('all-users', (users) => {
-        setUsersInRoom(users);
-        users.forEach(userId => {
-          const pc = createPeerConnection(userId, socketConnection);
-          peersRef.current[userId] = pc;
+          // save { id, role } list
+          setUsersInRoom(toConnect);
 
-          stream.getTracks().forEach(track => pc.addTrack(track, stream));
+          toConnect.forEach(({ userId, role }) => {
+            const pc = createPeerConnection(userId, socket);
+            peersRef.current[userId] = pc;
+            stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-          pc.createOffer().then(offer => {
-            pc.setLocalDescription(offer);
-            socketConnection.emit('offer', {
-              target: userId,
-              sdp: offer,
+            pc.createOffer().then(offer => {
+              pc.setLocalDescription(offer);
+              socket.emit('offer', { target: userId, sdp: offer });
             });
           });
         });
-      });
 
-      socketConnection.on('user-joined', (userId) => {
-        setUsersInRoom(prevUsers => [...prevUsers, userId]);
-        const pc = createPeerConnection(userId, socketConnection);
-        peersRef.current[userId] = pc;
+        // new peer joined
+        socket.on('user-joined', ({ userId, role }) => {
+          const shouldSee =
+            userRole === 'INSTRUCTOR' || role === 'INSTRUCTOR';
+          if (!shouldSee) return;
 
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
-      });
+          setUsersInRoom(prev => [...prev, { userId, role }]);
+          const pc = createPeerConnection(userId, socket);
+          peersRef.current[userId] = pc;
+          stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        });
 
-      socketConnection.on('offer', async ({ sdp, caller }) => {
-        let pc = peersRef.current[caller];
-        if (!pc) {
-          pc = createPeerConnection(caller, socketConnection);
+        socket.on('offer', async ({ sdp, caller }) => {
+          const pc =
+            peersRef.current[caller] ||
+            createPeerConnection(caller, socket);
           peersRef.current[caller] = pc;
           stream.getTracks().forEach(track => pc.addTrack(track, stream));
-        }
 
-        if (pc.signalingState !== 'stable') return;
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        socketConnection.emit('answer', {
-          target: caller,
-          sdp: answer,
-        });
-      });
-
-      socketConnection.on('answer', async ({ sdp, responder }) => {
-        const pc = peersRef.current[responder];
-        if (pc && pc.remoteDescription === null) {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        }
-      });
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.emit('answer', { target: caller, sdp: answer });
+        });
 
-      socketConnection.on('ice-candidate', ({ candidate, sender }) => {
-        const pc = peersRef.current[sender];
-        if (pc) {
-          pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error(e));
-        }
-      });
+        socket.on('answer', async ({ sdp, responder }) => {
+          const pc = peersRef.current[responder];
+          if (pc && !pc.remoteDescription) {
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          }
+        });
 
-      socketConnection.on('user-disconnected', (userId) => {
-        setUsersInRoom(prevUsers => prevUsers.filter(user => user !== userId));
-        if (peersRef.current[userId]) {
-          peersRef.current[userId].close();
-          delete peersRef.current[userId];
-        }
+        socket.on('ice-candidate', ({ candidate, sender }) => {
+          const pc = peersRef.current[sender];
+          if (pc) pc.addIceCandidate(new RTCIceCandidate(candidate));
+        });
 
-        const video = document.getElementById(userId);
-        if (video) video.remove();
-      });
-    });
+        socket.on('user-disconnected', userId => {
+          setUsersInRoom(u => u.filter(x => x.userId !== userId));
+          if (peersRef.current[userId]) {
+            peersRef.current[userId].close();
+            delete peersRef.current[userId];
+          }
+          const vid = document.getElementById(userId);
+          if (vid) vid.remove();
+        });
+      })
+      .catch(console.error);
 
     return () => {
-      socketConnection.disconnect();
+      socket.disconnect();
+      localStreamRef.current?.getTracks().forEach(t => t.stop());
     };
-  }, [roomId]); // ✅ re-run if roomId changes
+  }, [roomId, userRole]);
 
   const createPeerConnection = (userId, socket) => {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
+    pc.onicecandidate = e => {
+      if (e.candidate) {
         socket.emit('ice-candidate', {
           target: userId,
-          candidate: event.candidate,
+          candidate: e.candidate
         });
       }
     };
 
-    pc.ontrack = (event) => {
-      let remoteVideo = document.getElementById(userId);
-      if (!remoteVideo) {
-        remoteVideo = document.createElement('video');
-        remoteVideo.id = userId;
-        remoteVideo.autoplay = true;
-        remoteVideo.playsInline = true;
-        remoteVideo.style.width = '300px';
-        remoteVideo.style.margin = '5px';
-        remoteVideoContainerRef.current.appendChild(remoteVideo);
+    pc.ontrack = e => {
+      let video = document.getElementById(userId);
+      if (!video) {
+        video = document.createElement('video');
+        video.id = userId;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.style.width = '300px';
+        video.style.margin = '5px';
+        remoteContainerRef.current.appendChild(video);
       }
-      remoteVideo.srcObject = event.streams[0];
+      video.srcObject = e.streams[0];
     };
 
     return pc;
@@ -136,12 +140,29 @@ export default function LiveClassComponent({ roomId, userRole }) {
   return (
     <div>
       <h1>Live Classroom: {roomId}</h1>
-      <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '300px' }} />
-      <div ref={remoteVideoContainerRef} style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {usersInRoom.map(userId => (
+      <video
+        ref={localVideoRef}
+        autoPlay
+        muted
+        playsInline
+        style={{ width: '300px' }}
+      />
+      <div
+        ref={remoteContainerRef}
+        style={{ display: 'flex', flexWrap: 'wrap', marginTop: '1rem' }}
+      >
+        {usersInRoom.map(({ userId, role }) => (
           <div key={userId} style={{ textAlign: 'center', margin: '10px' }}>
-            <div>{userId}</div>
-            <video id={userId} autoPlay playsInline style={{ width: '300px' }} />
+            {/* render the peer’s role */}
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+              {role}
+            </div>
+            <video
+              id={userId}
+              autoPlay
+              playsInline
+              style={{ width: '300px' }}
+            />
           </div>
         ))}
       </div>
