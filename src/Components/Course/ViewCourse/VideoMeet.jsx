@@ -7,7 +7,7 @@ const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 export default function LiveClassComponent({ roomId, userRole }) {
 
   // const { roomId } = useParams(); // ✅ get roomId dynamically from URL
-  const [socket, setSocket] = useState(null);
+  // const [socket, setSocket] = useState(null);
   const [usersInRoom, setUsersInRoom] = useState([]);
   const localVideoRef = useRef();
   const remoteVideoContainerRef = useRef();
@@ -18,7 +18,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
     if (!roomId) return;
 
     const socketConnection = io(SERVER_URL);
-    setSocket(socketConnection);
+    // setSocket(socketConnection);
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
       localStreamRef.current = stream;
