@@ -266,10 +266,14 @@ const [screenSharerId, setScreenSharerId] = useState(null);
     // Track media streams
     const remoteStream = new MediaStream();
     pc.ontrack = ({ track, streams }) => {
-      track.onunmute = () => {
-        remoteStream.addTrack(track);
-        setPeers(prev => ({ ...prev, [peerId]: remoteStream }));
-      };
+
+      if (streams && streams[0]) {
+        setPeers(prev => ({ ...prev, [peerId]: streams[0] }));
+      }
+      // track.onunmute = () => {
+      //   remoteStream.addTrack(track);
+      //   setPeers(prev => ({ ...prev, [peerId]: remoteStream }));
+      // };
     };
   
     // Add local tracks
