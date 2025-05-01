@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 
-const SERVER_URL = 'http://localhost:5001';
+const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 const ROOM_ID = 'classroom-101';
 
 export default function LiveClassComponent() {
