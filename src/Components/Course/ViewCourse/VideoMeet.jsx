@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 import { useParams } from 'react-router-dom';
 
-const SERVER_URL = '[https://new-mern-backend-cp5h.onrender.com](https://new-mern-backend-cp5h.onrender.com)';
+const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 const socket = io(SERVER_URL);
 
 export default function LiveClassComponent({ roomId, userRole }){
