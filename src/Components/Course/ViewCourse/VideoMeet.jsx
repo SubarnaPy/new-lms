@@ -14,25 +14,20 @@ export default function LiveClassComponent({ roomId, userRole }) {
   const pcMap = useRef({});
   const myIdRef = useRef(null);
 
-  // Generic logger
   const log = (...args) => console.log('[LiveClass]', ...args);
 
   useEffect(() => {
-    // Handlers
     const handleAllUsers = (users) => {
-      log('all-users:', users);
       users.forEach(({ id: peerId, role: peerRole }) => {
         createPeerConnection(peerId, true, peerRole);
       });
     };
 
     const handleUserJoined = ({ id: peerId, role: peerRole }) => {
-      log('user-joined:', peerId, peerRole);
       createPeerConnection(peerId, false, peerRole);
     };
 
     const handleOffer = async ({ caller, sdp, role: peerRole }) => {
-      log('offer from', caller);
       const pc = createPeerConnection(caller, false, peerRole);
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
       const answer = await pc.createAnswer();
@@ -41,7 +36,6 @@ export default function LiveClassComponent({ roomId, userRole }) {
     };
 
     const handleAnswer = async ({ responder, sdp }) => {
-      log('answer from', responder);
       const pc = pcMap.current[responder];
       if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
     };
@@ -52,7 +46,6 @@ export default function LiveClassComponent({ roomId, userRole }) {
     };
 
     const handleDisconnect = (peerId) => {
-      log('disconnect:', peerId);
       const pc = pcMap.current[peerId];
       if (pc) pc.close();
       delete pcMap.current[peerId];
@@ -63,18 +56,14 @@ export default function LiveClassComponent({ roomId, userRole }) {
       });
     };
 
-    // Join after connection
     const joinRoom = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localStreamRef.current = stream;
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
-        } else {
-          log('localVideoRef not assigned yet');
         }
         socket.emit('join-room', roomId, { role: userRole });
-        log('join-room', roomId, userRole);
 
         socket.on('all-users', handleAllUsers);
         socket.on('user-joined', handleUserJoined);
@@ -89,7 +78,6 @@ export default function LiveClassComponent({ roomId, userRole }) {
 
     const onConnect = () => {
       myIdRef.current = socket.id;
-      log('connected as', socket.id);
       joinRoom();
     };
 
@@ -115,19 +103,16 @@ export default function LiveClassComponent({ roomId, userRole }) {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     pcMap.current[peerId] = pc;
 
-    // local tracks
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
     }
 
-    // remote stream
     const remoteStream = new MediaStream();
     pc.ontrack = e => {
       remoteStream.addTrack(e.track);
       setPeers(prev => ({ ...prev, [peerId]: { stream: remoteStream, role: peerRole } }));
     };
 
-    // ICE
     pc.onicecandidate = e => {
       if (e.candidate) socket.emit('ice-candidate', { target: peerId, candidate: e.candidate });
     };
@@ -152,7 +137,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
   const videoStyle = { width: '240px', height: '180px', borderRadius: '8px', border: '2px solid #ccc' };
   const singleStyle = { ...videoStyle, width: '480px', height: '360px' };
 
-  // Render
+  // Filter peers for display
   const studentPeers = Object.entries(peers).filter(([_, p]) => p.role === 'STUDENT');
   const instructorPeers = Object.entries(peers).filter(([_, p]) => p.role === 'INSTRUCTOR');
 
@@ -162,11 +147,24 @@ export default function LiveClassComponent({ roomId, userRole }) {
       {userRole === 'INSTRUCTOR' ? (
         <>
           <h3>Your Preview</h3>
-          <video ref={localVideoRef} autoPlay muted style={videoStyle} />
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            style={videoStyle}
+          />
           <h3>Students</h3>
           <div style={gridStyle}>
             {studentPeers.map(([id, { stream }]) => (
-              <video key={id} ref={el => el && (el.srcObject = stream)} autoPlay style={videoStyle} />
+              <video
+                key={id}
+                ref={el => el && (el.srcObject = stream)}
+                autoPlay
+                playsInline
+                muted
+                style={videoStyle}
+              />
             ))}
           </div>
         </>
@@ -175,7 +173,14 @@ export default function LiveClassComponent({ roomId, userRole }) {
           <h3>Instructor</h3>
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
             {instructorPeers.map(([id, { stream }]) => (
-              <video key={id} ref={el => el && (el.srcObject = stream)} autoPlay style={singleStyle} />
+              <video
+                key={id}
+                ref={el => el && (el.srcObject = stream)}
+                autoPlay
+                playsInline
+                muted
+                style={singleStyle}
+              />
             ))}
           </div>
         </>
