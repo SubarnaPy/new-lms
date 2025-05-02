@@ -7,8 +7,8 @@ const socket = io(SERVER_URL, {
   withCredentials: true,
 });
 
-// Simple Whiteboard for instructor
-function Whiteboard() {
+// Collaborative Whiteboard for instructor
+function Whiteboard({ roomId, editable }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
@@ -24,37 +24,56 @@ function Whiteboard() {
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
+    const emitDraw = ({ prevX, prevY, x, y }) => {
+      socket.emit('whiteboard-draw', { roomId, prevX, prevY, x, y });
+    };
+
+    // Local drawing
     const onMouseDown = e => {
+      if (!editable) return;
       drawing.current = true;
       lastPos.current = getPos(e);
     };
     const onMouseMove = e => {
-      if (!drawing.current) return;
+      if (!editable || !drawing.current) return;
       const pos = getPos(e);
       ctx.beginPath();
       ctx.moveTo(lastPos.current.x, lastPos.current.y);
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
+      emitDraw({ prevX: lastPos.current.x, prevY: lastPos.current.y, x: pos.x, y: pos.y });
       lastPos.current = pos;
     };
     const onMouseUp = () => { drawing.current = false; };
 
+    // Remote drawing
+    const onRemoteDraw = ({ roomId: rid, prevX, prevY, x, y }) => {
+      if (rid !== roomId) return;
+      ctx.beginPath();
+      ctx.moveTo(prevX, prevY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    };
+
     canvas.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+    socket.on('whiteboard-draw', onRemoteDraw);
+
     return () => {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      socket.off('whiteboard-draw', onRemoteDraw);
     };
-  }, []);
+  }, [roomId, editable]);
 
   return <canvas ref={canvasRef} width={800} height={400} style={{ border: '1px solid #ccc', margin: '16px auto', display: 'block' }} />;
 }
 
 export default function LiveClassComponent({ roomId, userRole }) {
   const localVideoRef = useRef(null);
-  const [peers, setPeers] = useState({});
+  const [peers, setPeers] = useState({}); // { id: { stream, role } }
   const localStreamRef = useRef(null);
   const pcMap = useRef({});
   const myIdRef = useRef(null);
@@ -66,93 +85,51 @@ export default function LiveClassComponent({ roomId, userRole }) {
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
 
-  const log = (...args) => console.log('[LiveClass]', ...args);
-
-  // Chat listener effect
+  // Chat listener
   useEffect(() => {
-    socket.on('chat-message', ({ sender, text }) => {
-      setMessages(prev => [...prev, { sender, text }]);
-    });
-    return () => socket.off('chat-message');
+    const onMsg = ({ sender, text }) => setMessages(prev => [...prev, { sender, text }]);
+    socket.on('chat-message', onMsg);
+    return () => socket.off('chat-message', onMsg);
   }, []);
 
-  // Signaling and media effect
+  // Signaling & media
   useEffect(() => {
-    // Signaling handlers
-    const handleAllUsers = users => {
-      log('all-users:', users);
-      users.forEach(({ id: peerId, role: peerRole }) => createPeerConnection(peerId, true, peerRole));
-    };
-    const handleUserJoined = ({ id: peerId, role: peerRole }) => {
-      log('user-joined:', peerId, peerRole);
-      createPeerConnection(peerId, false, peerRole);
-    };
-    const handleOffer = async ({ caller, sdp, role: peerRole }) => {
-      log('offer from', caller);
-      const pc = createPeerConnection(caller, false, peerRole);
+    const handleAllUsers = users => users.forEach(({ id, role }) => createPeer(id, true, role));
+    const handleUserJoined = ({ id, role }) => createPeer(id, false, role);
+    const handleOffer = async ({ caller, sdp, role }) => {
+      const pc = createPeer(caller, false, role);
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('answer', { target: caller, sdp: pc.localDescription });
-      log('sent answer to', caller);
     };
     const handleAnswer = async ({ responder, sdp }) => {
-      log('answer from', responder);
       const pc = pcMap.current[responder];
-      if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        log('set remote answer for', responder);
-      }
+      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
     };
     const handleIce = async ({ sender, candidate }) => {
       const pc = pcMap.current[sender];
-      if (pc && candidate) {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          log('added ICE candidate for', sender);
-        } catch (err) {
-          console.error('ICE error', err);
-        }
-      }
+      if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate));
     };
-    const handleDisconnect = peerId => {
-      log('user disconnected', peerId);
-      const pc = pcMap.current[peerId];
-      if (pc) pc.close();
-      delete pcMap.current[peerId];
-      setPeers(prev => {
-        const copy = { ...prev };
-        delete copy[peerId];
-        return copy;
-      });
+    const handleDisconnect = id => {
+      const pc = pcMap.current[id]; pc && pc.close(); delete pcMap.current[id];
+      setPeers(prev => { const p = { ...prev }; delete p[id]; return p; });
     };
 
-    // Join room and set up media
     const joinRoom = async () => {
-      try {
-        log('joining room', roomId, userRole);
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localStreamRef.current = stream;
-        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-        socket.emit('join-room', roomId, { role: userRole });
-
-        socket.on('all-users', handleAllUsers);
-        socket.on('user-joined', handleUserJoined);
-        socket.on('offer', handleOffer);
-        socket.on('answer', handleAnswer);
-        socket.on('ice-candidate', handleIce);
-        socket.on('user-disconnected', handleDisconnect);
-      } catch (err) {
-        console.error('getUserMedia error', err);
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localStreamRef.current = stream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      socket.emit('join-room', roomId, { role: userRole });
+      socket.on('all-users', handleAllUsers);
+      socket.on('user-joined', handleUserJoined);
+      socket.on('offer', handleOffer);
+      socket.on('answer', handleAnswer);
+      socket.on('ice-candidate', handleIce);
+      socket.on('user-disconnected', handleDisconnect);
     };
 
-    const onConnect = () => {
-      myIdRef.current = socket.id;
-      log('connected as', socket.id);
-      joinRoom();
-    };
-
+    const onConnect = () => { myIdRef.current = socket.id; joinRoom(); };
     socket.on('connect', onConnect);
     if (socket.connected) onConnect();
 
@@ -170,102 +147,42 @@ export default function LiveClassComponent({ roomId, userRole }) {
     };
   }, [roomId, userRole]);
 
-  const createPeerConnection = (peerId, isOfferer, peerRole) => {
-    if (pcMap.current[peerId]) return pcMap.current[peerId];
-    log('creating PC for', peerId, 'offerer?', isOfferer);
+  const createPeer = (id, isOfferer, role) => {
+    if (pcMap.current[id]) return pcMap.current[id];
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    pcMap.current[peerId] = pc;
-
-    // add local tracks
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        pc.addTrack(track, localStreamRef.current);
-        log('added track', track.kind, 'to', peerId);
-      });
-    }
-
-    // receive remote
+    pcMap.current[id] = pc;
+    localStreamRef.current?.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
     const remoteStream = new MediaStream();
     pc.ontrack = e => {
       remoteStream.addTrack(e.track);
-      setPeers(prev => ({ ...prev, [peerId]: { stream: remoteStream, role: peerRole } }));
-      log('received track', e.track.kind, 'from', peerId);
+      setPeers(p => ({ ...p, [id]: { stream: remoteStream, role } }));
     };
-
-    // ICE
-    pc.onicecandidate = e => {
-      if (e.candidate) {
-        socket.emit('ice-candidate', { target: peerId, candidate: e.candidate });
-        log('sent ICE to', peerId);
-      }
+    pc.onicecandidate = e => e.candidate && socket.emit('ice-candidate', { target: id, candidate: e.candidate });
+    if (isOfferer) pc.onnegotiationneeded = async () => {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('offer', { target: id, sdp: pc.localDescription, role: userRole });
     };
-
-    // negotiation
-    if (isOfferer) {
-      pc.onnegotiationneeded = async () => {
-        log('negotiationneeded for', peerId);
-        try {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          socket.emit('offer', { target: peerId, sdp: pc.localDescription, role: userRole });
-          log('sent offer to', peerId);
-        } catch (err) {
-          console.error('negotiation error', err);
-        }
-      };
-    }
-
     return pc;
   };
 
-  // UI rendering
-  const gridStyle = { display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' };
-  const videoStyle = { width: '240px', height: '180px', borderRadius: '8px', border: '2px solid #ccc' };
-  const singleStyle = { ...videoStyle, width: '480px', height: '360px' };
-  const controlBar = { display: 'flex', justifyContent: 'center', gap: '12px', margin: '12px 0' };
-  const chatPanel = { border: '1px solid #ccc', padding: '8px', width: '300px', height: '400px', overflowY: 'auto' };
-  const messageStyle = { margin: '4px 0' };
-
-  const studentPeers = Object.entries(peers).filter(([_, p]) => p.role === 'STUDENT');
-  const instructorPeers = Object.entries(peers).filter(([_, p]) => p.role === 'INSTRUCTOR');
-
-  // Control handlers
-  const toggleVideo = () => {
-    const tracks = localStreamRef.current?.getVideoTracks() || [];
-    tracks.forEach(track => {
-      track.enabled = !track.enabled;
-      setVideoEnabled(track.enabled);
-    });
-  };
-  const toggleAudio = () => {
-    const tracks = localStreamRef.current?.getAudioTracks() || [];
-    tracks.forEach(track => {
-      track.enabled = !track.enabled;
-      setAudioEnabled(track.enabled);
-    });
-  };
+  // Controls
+  const toggleVideo = () => 
+    localStreamRef.current?.getVideoTracks().forEach(t => t.enabled = !t.enabled);
+  const toggleAudio = () => 
+    localStreamRef.current?.getAudioTracks().forEach(t => t.enabled = !t.enabled);
   const shareScreen = async () => {
-    if (screenSharing) {
-      shareScreen(); // toggles back
-      return;
-    }
-    try {
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const screenTrack = displayStream.getVideoTracks()[0];
-      Object.values(pcMap.current).forEach(pc => {
-        const sender = pc.getSenders().find(s => s.track.kind === 'video');
-        sender.replaceTrack(screenTrack);
-      });
-      screenTrack.onended = () => shareScreen();
-      setScreenSharing(true);
-    } catch (err) {
-      console.error('screen share error', err);
-    }
+    if (screenSharing) return window.location.reload();
+    const disp = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const track = disp.getVideoTracks()[0];
+    Object.values(pcMap.current).forEach(pc => pc.getSenders().find(s => s.track.kind==='video').replaceTrack(track));
+    track.onended = () => window.location.reload();
+    setScreenSharing(true);
   };
   const sendMessage = () => {
     if (!chatInput.trim()) return;
     socket.emit('chat-message', { text: chatInput, sender: myIdRef.current });
-    setMessages(prev => [...prev, { sender: 'Me', text: chatInput }]);
+    setMessages(m => [...m, { sender: 'Me', text: chatInput }]);
     setChatInput('');
   };
   const endCall = () => {
@@ -273,49 +190,61 @@ export default function LiveClassComponent({ roomId, userRole }) {
     socket.disconnect();
   };
 
+  // Render
+  const grid = { display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' };
+  const videoStyle = { width: 240, height: 180, borderRadius: 8, border: '2px solid #ccc' };
+  const bigVideo = { ...videoStyle, width: 480, height: 360 };
+  const chatStyle = { border: '1px solid #ccc', padding: 8, width: 300, height: 400, overflowY: 'auto' };
+
+  const studentPeers = Object.entries(peers).filter(([,p]) => p.role==='STUDENT');
+  const instructorPeers = Object.entries(peers).filter(([,p]) => p.role==='INSTRUCTOR');
+
   return (
-    <div style={{ padding: '16px' }}>
+    <div style={{ padding: 16 }}>
       <h2 style={{ textAlign: 'center' }}>Role: {userRole}</h2>
-      <div style={controlBar}>
-        <button onClick={toggleVideo}>{videoEnabled ? 'Video Off' : 'Video On'}</button>
-        <button onClick={toggleAudio}>{audioEnabled ? 'Mute' : 'Unmute'}</button>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 12, margin: 12 }}>
+        <button onClick={toggleVideo}>Toggle Video</button>
+        <button onClick={toggleAudio}>Toggle Audio</button>
         <button onClick={shareScreen}>{screenSharing ? 'Stop Share' : 'Share Screen'}</button>
         <button onClick={endCall}>End Call</button>
       </div>
-      <div style={{ display: 'flex', gap: '16px' }}>
+      <div style={{ display: 'flex', gap: 16 }}>
         <div style={{ flex: 1 }}>
-          {userRole === 'INSTRUCTOR' ? (
-            <>  
+          {userRole==='INSTRUCTOR' ? (
+            <>
               <h3>Your Preview</h3>
               <video ref={localVideoRef} autoPlay playsInline muted style={videoStyle} />
               <h3>Students</h3>
-              <div style={gridStyle}>
-                {studentPeers.map(([id, { stream }]) => (
-                  <video key={id} ref={el => el && (el.srcObject = stream)} autoPlay playsInline style={videoStyle} />
+              <div style={grid}>
+                {studentPeers.map(([id,{stream}]) => (
+                  <video key={id} ref={e => e && (e.srcObject = stream)} autoPlay playsInline style={videoStyle} />
                 ))}
               </div>
-              <Whiteboard />
+              <Whiteboard roomId={roomId} editable={true} />
             </>
           ) : (
-            <>  
+            <>
               <h3>Instructor</h3>
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                {instructorPeers.map(([id, { stream }]) => (
-                  <video key={id} ref={el => el && (el.srcObject = stream)} autoPlay playsInline style={singleStyle} />
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                {instructorPeers.map(([id,{stream}]) => (
+                  <video key={id} ref={e => e && (e.srcObject = stream)} autoPlay playsInline style={bigVideo} />
                 ))}
               </div>
             </>
           )}
         </div>
-        <div style={chatPanel}>
+        <div style={chatStyle}>
           <h4>Chat</h4>
-          <div style={{ height: '300px', overflowY: 'auto' }}>
-            {messages.map((m, i) => (
-              <div key={i} style={messageStyle}><strong>{m.sender}:</strong> {m.text}</div>
-            ))}
+          <div style={{ height: 300, overflowY: 'auto' }}>
+            {messages.map((m,i) => <div key={i}><b>{m.sender}:</b> {m.text}</div>)}
           </div>
-          <div style={{ display: 'flex', marginTop: '8px' }}>
-            <input value={chatInput} onChange={e => setChatInput(e.target.value)} style={{ flex: 1, marginRight: '4px' }} />
+          <div style={{ display: 'flex', marginTop: 8 }}>
+            <input
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key==='Enter' && sendMessage()}
+              style={{ flex:1, marginRight:4 }}
+            />
             <button onClick={sendMessage}>Send</button>
           </div>
         </div>
