@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axiosInstance from '../Helpers/axiosInstance';
 
-// Async Thunks
+// All Async Thunks
 export const createQuiz = createAsyncThunk(
   'quiz/createQuiz',
   async ({ courseId, sectionId, quizData }, { rejectWithValue }) => {
@@ -48,7 +48,10 @@ export const updateQuiz = createAsyncThunk(
   'quiz/updateQuiz',
   async ({ quizId, updatedData }, { rejectWithValue }) => {
     try {
-      const { data } = await axiosInstance.put(`/quizzes/update/${quizId}`, updatedData);
+      const { data } = await axiosInstance.put(
+        `/quizzes/${quizId}`,
+        updatedData
+      );
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
@@ -58,52 +61,84 @@ export const updateQuiz = createAsyncThunk(
 
 export const deleteQuiz = createAsyncThunk(
   'quiz/deleteQuiz',
-  async ({ quizId, courseId }, { rejectWithValue }) => {
+  async (quizId, { rejectWithValue }) => {
     try {
-      await axiosInstance.delete(`/quizzes/delete/${quizId}`);
-      return { quizId, courseId };
+      await axiosInstance.delete(`/quizzes/${quizId}`);
+      return quizId;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+export const markQuizeAsComplete = createAsyncThunk(
+  'course/markAssignmentAsComplete',
+  async ({ courseId, quizId }, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.post(
+        `/courses/quize/complete`,
+        { quizId, courseId }
+      );
+      return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
-// Slice
+export const submitQuizAnswers = createAsyncThunk(
+  'quiz/submit',
+  async ({ quizId, answers }, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.post(`/courses/submitQuize`, {
+        quizId,
+        answers
+      });
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Submission failed');
+    }
+  }
+);
+
+// Slice with Complete State Management
 const quizSlice = createSlice({
   name: 'quiz',
   initialState: {
     quizzes: [],
     currentQuiz: null,
     loading: false,
-    error: null
+    error: null,
+    operationStatus: 'idle',
+    submission: {
+      status: 'idle',
+      result: null,
+      error: null
+    }
   },
   reducers: {
-    clearQuizState: (state) => {
+    resetQuizState: (state) => {
       state.currentQuiz = null;
       state.error = null;
+      state.operationStatus = 'idle';
+    },
+    resetSubmission: (state) => {
+      state.submission = {
+        status: 'idle',
+        result: null,
+        error: null
+      };
     }
   },
   extraReducers: (builder) => {
     builder
       // Create Quiz
-      .addCase(createQuiz.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(createQuiz.fulfilled, (state, action) => {
         state.loading = false;
-        state.quizzes.push(action.payload);
-      })
-      .addCase(createQuiz.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.operationStatus = 'succeeded';
+        state.quizzes.push(action.payload.data);
       })
 
       // Fetch Quiz
-      .addCase(fetchQuiz.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(fetchQuiz.fulfilled, (state, action) => {
         state.loading = false;
         const quiz = action.payload;
@@ -119,60 +154,50 @@ const quizSlice = createSlice({
           state.quizzes.push(quiz);
         }
       })
-      .addCase(fetchQuiz.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-        state.currentQuiz = null;
-      })
 
       // Update Quiz
-      .addCase(updateQuiz.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(updateQuiz.fulfilled, (state, action) => {
         state.loading = false;
-        const updatedQuiz = action.payload;
+        state.operationStatus = 'succeeded';
+        const updatedQuiz = action.payload.data;
         
         // Update quizzes array
-        const index = state.quizzes.findIndex(q => q._id === updatedQuiz._id);
-        if (index !== -1) {
-          state.quizzes[index] = updatedQuiz;
-        }
+        state.quizzes = state.quizzes.map(quiz => 
+          quiz._id === updatedQuiz._id ? updatedQuiz : quiz
+        );
         
-        // Update current quiz if it's the updated one
+        // Update current quiz if needed
         if (state.currentQuiz?._id === updatedQuiz._id) {
           state.currentQuiz = updatedQuiz;
         }
       })
-      .addCase(updateQuiz.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
 
       // Delete Quiz
-      .addCase(deleteQuiz.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(deleteQuiz.fulfilled, (state, action) => {
         state.loading = false;
-        const { quizId } = action.payload;
+        state.operationStatus = 'succeeded';
+        const deletedId = action.payload;
         
         // Remove from quizzes array
-        state.quizzes = state.quizzes.filter(q => q._id !== quizId);
+        state.quizzes = state.quizzes.filter(q => q._id !== deletedId);
         
-        // Clear current quiz if it's the deleted one
-        if (state.currentQuiz?._id === quizId) {
+        // Clear current quiz if deleted
+        if (state.currentQuiz?._id === deletedId) {
           state.currentQuiz = null;
         }
       })
-      .addCase(deleteQuiz.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+
+      // Submit Answers
+      .addCase(submitQuizAnswers.pending, (state) => {
+        state.submission.status = 'loading';
+        state.submission.error = null;
+      })
+      .addCase(submitQuizAnswers.fulfilled, (state, action) => {
+        state.submission.status = 'succeeded';
+        state.submission.result = action.payload.data;
       });
   }
 });
 
-export const { clearQuizState } = quizSlice.actions;
+export const { resetQuizState, resetSubmission } = quizSlice.actions;
 export default quizSlice.reducer;

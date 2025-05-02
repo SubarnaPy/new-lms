@@ -1,17 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchQuiz } from "../../../Redux/quizeSlice";
+import { fetchQuiz, markQuizeAsComplete, submitQuizAnswers } from "../../../Redux/quizeSlice";
 import { Spinner, Button, Radio, Dialog, DialogBody, DialogFooter } from "@material-tailwind/react";
-import { CheckCircleIcon, ClockIcon, TrophyIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon, ClockIcon, TrophyIcon, ExclamationTriangleIcon, XCircleIcon } from "@heroicons/react/24/outline";
 
 const QuizPage = () => {
   const { courseId, sectionId, quizId } = useParams();
   const dispatch = useDispatch();
-  const { currentQuiz, loading, error } = useSelector((state) => state.courseQuize);
+  const { 
+    currentQuiz, 
+    loading, 
+    error,
+    submitResult,
+    submitStatus 
+  } = useSelector((state) => state.courseQuize);
+
   const [answers, setAnswers] = useState({});
   const [showConfirm, setShowConfirm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
 
   useEffect(() => {
@@ -30,19 +37,101 @@ const QuizPage = () => {
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleSubmit = () => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      console.log("Submitted Answers:", answers);
-      setIsSubmitting(false);
+  const handleSubmit = async () => {
+    try {
+      const transformedAnswers = currentQuiz.questions.map(question => ({
+        questionId: question._id,
+        selectedOption: answers[question._id] || null
+      }));
+
+      const res=await dispatch(
+        submitQuizAnswers({
+          quizId: currentQuiz._id,
+          answers: transformedAnswers
+        })
+
+      ).unwrap();
+      console.log(res)
+
+      if(res.status=="success"){
+        console.log("hi")
+      await dispatch( markQuizeAsComplete({courseId, quizId }))
+      }
+
       setShowConfirm(false);
-      alert("Quiz submitted successfully!");
-    }, 1500);
+      setShowResults(true);
+    } catch (error) {
+      alert(error.message || 'Failed to submit quiz');
+    }
   };
 
   const answeredCount = Object.keys(answers).length;
   const totalQuestions = currentQuiz?.questions?.length || 0;
   const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+
+  const ResultsDialog = () => (
+    <Dialog open={showResults} handler={() => setShowResults(false)}>
+      <DialogBody className="pt-8 pb-4 text-center">
+        {submitResult?.scorePercentage >= 75 ? (
+          <TrophyIcon className="w-16 h-16 mx-auto text-yellow-500" />
+        ) : (
+          <CheckCircleIcon className="w-16 h-16 mx-auto text-green-500" />
+        )}
+        
+        <h3 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
+          {submitResult?.scorePercentage >= 75 
+            ? "Great Job!" 
+            : "Quiz Completed"}
+        </h3>
+        
+        <div className="mt-6 space-y-4">
+          <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+            {submitResult?.correctAnswers}/{submitResult?.totalQuestions}
+          </div>
+          <div className="text-lg font-medium text-gray-600 dark:text-gray-300">
+            ({submitResult?.scorePercentage}%) Correct
+          </div>
+          
+          <div className="mt-6 space-y-2">
+            {submitResult?.details?.map((answer, index) => (
+              <div
+                key={index}
+                className={`p-3 rounded-lg ${
+                  answer.isCorrect 
+                    ? "bg-green-50 dark:bg-green-900/20" 
+                    : "bg-red-50 dark:bg-red-900/20"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Question {index + 1}</span>
+                  {answer.isCorrect ? (
+                    <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <XCircleIcon className="w-5 h-5 text-red-500" />
+                  )}
+                </div>
+                {!answer.isCorrect && (
+                  <div className="mt-2 text-sm text-left">
+                    <p>Your answer: {answer.selectedOption || "Not answered"}</p>
+                    <p>Correct answer: {answer.correctOption}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </DialogBody>
+      <DialogFooter className="justify-center pb-6">
+        <Button
+          onClick={() => setShowResults(false)}
+          color="blue"
+          className="px-8"
+        >
+          Close
+        </Button>
+      </DialogFooter>
+    </Dialog>
+  );
 
   if (loading) {
     return (
@@ -77,7 +166,6 @@ const QuizPage = () => {
 
   return (
     <div className="min-h-screen dark:bg-gray-900">
-      {/* Floating Header */}
       {scrollPosition > 100 && (
         <div className="fixed top-0 left-0 right-0 z-50 shadow-sm bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
           <div className="flex items-center justify-between max-w-4xl px-4 py-3 mx-auto">
@@ -102,7 +190,6 @@ const QuizPage = () => {
 
       <div className="max-w-4xl pt-8 mx-auto sm:px-6 lg:px-8">
         <div className="p-6 bg-white shadow-lg rounded-2xl dark:bg-gray-800">
-          {/* Quiz Header */}
           <div className="pb-6 mb-6 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-start justify-between">
               <div>
@@ -139,7 +226,6 @@ const QuizPage = () => {
             </div>
           </div>
 
-          {/* Questions List */}
           <div className="space-y-8">
             {currentQuiz.questions?.map((question, index) => (
               <div 
@@ -192,14 +278,13 @@ const QuizPage = () => {
             ))}
           </div>
 
-          {/* Submit Button */}
           <div className="mt-8 text-right">
             <Button
               onClick={() => setShowConfirm(true)}
-              disabled={isSubmitting}
+              disabled={submitStatus === 'loading'}
               className="px-8 py-3 text-base font-medium transition-all duration-200 bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? (
+              {submitStatus === 'loading' ? (
                 <div className="flex items-center space-x-2">
                   <Spinner className="w-4 h-4" />
                   <span>Submitting...</span>
@@ -212,7 +297,6 @@ const QuizPage = () => {
         </div>
       </div>
 
-      {/* Confirmation Dialog */}
       <Dialog open={showConfirm} handler={() => setShowConfirm(false)}>
         <DialogBody className="pt-8 pb-4 text-center">
           <CheckCircleIcon className="w-16 h-16 mx-auto text-green-500" />
@@ -246,6 +330,8 @@ const QuizPage = () => {
           </Button>
         </DialogFooter>
       </Dialog>
+
+      <ResultsDialog />
     </div>
   );
 };
