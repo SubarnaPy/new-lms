@@ -8,10 +8,24 @@ const socket = io(SERVER_URL, {
 });
 
 // Collaborative Whiteboard for instructor
+
+
 function Whiteboard({ roomId, editable }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    return () => window.removeEventListener('resize', resizeCanvas);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -68,9 +82,19 @@ function Whiteboard({ roomId, editable }) {
     };
   }, [roomId, editable]);
 
-  return <canvas ref={canvasRef} width={800} height={400} style={{ border: '1px solid #ccc', margin: '16px auto', display: 'block' }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        width: '100%',
+        height: '400px',
+        border: '1px solid #ccc',
+        margin: '16px auto',
+        display: 'block'
+      }}
+    />
+  );
 }
-
 export default function LiveClassComponent({ roomId, userRole }) {
   const localVideoRef = useRef(null);
   const [peers, setPeers] = useState({}); // { id: { stream, role } }
@@ -230,22 +254,28 @@ export default function LiveClassComponent({ roomId, userRole }) {
                   <video key={id} ref={e => e && (e.srcObject = stream)} autoPlay playsInline style={bigVideo} />
                 ))}
               </div>
+              <Whiteboard roomId={roomId} editable={false} />
             </>
           )}
         </div>
-        <div style={chatStyle}>
-          <h4>Chat</h4>
+        <div style={{ ...chatStyle, flexShrink: 0, marginTop: 48 }}>
+          <h4>Class Chat</h4>
           <div style={{ height: 300, overflowY: 'auto' }}>
-            {messages.map((m,i) => <div key={i}><b>{m.sender}:</b> {m.text}</div>)}
+            {messages.map((m,i) => (
+              <div key={i} style={{ marginBottom: 4 }}>
+                <b>{m.sender}:</b> {m.text}
+              </div>
+            ))}
           </div>
           <div style={{ display: 'flex', marginTop: 8 }}>
             <input
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
-              onKeyDown={e => e.key==='Enter' && sendMessage()}
-              style={{ flex:1, marginRight:4 }}
+              onKeyDown={e => e.key === 'Enter' && sendMessage()}
+              placeholder="Type your message..."
+              style={{ flex: 1, marginRight: 4, padding: 4 }}
             />
-            <button onClick={sendMessage}>Send</button>
+            <button onClick={sendMessage} style={{ padding: '4px 8px' }}>Send</button>
           </div>
         </div>
       </div>
