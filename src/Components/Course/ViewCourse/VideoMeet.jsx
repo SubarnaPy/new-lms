@@ -9,185 +9,131 @@ const socket = io(SERVER_URL, {
 
 export default function LiveClassComponent({ roomId, userRole }) {
   const localVideoRef = useRef(null);
-  const [peers, setPeers] = useState({});
+  const [peers, setPeers] = useState({}); // { [id]: { stream, role } }
   const localStreamRef = useRef(null);
   const pcMap = useRef({});
   const myIdRef = useRef(null);
 
-  // Debug helper
+  // Generic logger
   const log = (...args) => console.log('[LiveClass]', ...args);
 
-  // Capture our socket ID on connect
   useEffect(() => {
-    socket.on('connect', () => {
-      myIdRef.current = socket.id;
-      log('Connected to signaling server. My socket ID:', socket.id);
-    });
-    return () => socket.off('connect');
-  }, []);
+    // Handlers
+    const handleAllUsers = (users) => {
+      log('all-users:', users);
+      users.forEach(({ id: peerId, role: peerRole }) => {
+        createPeerConnection(peerId, true, peerRole);
+      });
+    };
 
-  // Main mesh setup
-  useEffect(() => {
+    const handleUserJoined = ({ id: peerId, role: peerRole }) => {
+      log('user-joined:', peerId, peerRole);
+      createPeerConnection(peerId, false, peerRole);
+    };
+
+    const handleOffer = async ({ caller, sdp, role: peerRole }) => {
+      log('offer from', caller);
+      const pc = createPeerConnection(caller, false, peerRole);
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit('answer', { target: caller, sdp: pc.localDescription });
+    };
+
+    const handleAnswer = async ({ responder, sdp }) => {
+      log('answer from', responder);
+      const pc = pcMap.current[responder];
+      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    };
+
+    const handleIce = async ({ sender, candidate }) => {
+      const pc = pcMap.current[sender];
+      if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    };
+
+    const handleDisconnect = (peerId) => {
+      log('disconnect:', peerId);
+      const pc = pcMap.current[peerId];
+      if (pc) pc.close();
+      delete pcMap.current[peerId];
+      setPeers(prev => {
+        const copy = { ...prev };
+        delete copy[peerId];
+        return copy;
+      });
+    };
+
+    // Join after connection
     const joinRoom = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        log('Acquired local media stream');
         localVideoRef.current.srcObject = stream;
         localStreamRef.current = stream;
-
         socket.emit('join-room', roomId, { role: userRole });
-        log('Emitted join-room:', roomId, userRole);
+        log('join-room', roomId, userRole);
 
-        // Existing users
-        socket.on('all-users', users => {
-          log('all-users event, users:', users.map(u => u.id));
-          users.forEach(({ id: peerId }) => {
-            const isOfferer = myIdRef.current < peerId;
-            createPeerConnection(peerId, isOfferer);
-          });
-        });
-
-        // New user joined
-        socket.on('user-joined', ({ id: peerId }) => {
-          log('user-joined event, peerId:', peerId);
-          const isOfferer = myIdRef.current < peerId;
-          createPeerConnection(peerId, isOfferer);
-        });
-
-        // Incoming offer
-        socket.on('offer', async ({ caller, sdp }) => {
-          log('Received offer from', caller);
-          const pc = createPeerConnection(caller, false);
-          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-          log('Set remote description for offer from', caller);
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          log('Created and set local answer for', caller);
-          socket.emit('answer', { target: caller, sdp: pc.localDescription });
-          log('Sent answer to', caller);
-        });
-
-        // Incoming answer
-        socket.on('answer', async ({ responder, sdp }) => {
-          log('Received answer from', responder);
-          const pc = pcMap.current[responder];
-          if (!pc) {
-            log('No peer connection found for', responder);
-            return;
-          }
-          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-          log('Set remote description for answer from', responder);
-        });
-
-        // Incoming ICE candidate
-        socket.on('ice-candidate', async ({ sender, candidate }) => {
-          log('Received ICE candidate from', sender, candidate);
-          const pc = pcMap.current[sender];
-          if (pc && candidate) {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(candidate));
-              log('Added ICE candidate for', sender);
-            } catch (err) {
-              console.error('[LiveClass] ICE error', err);
-            }
-          }
-        });
-
-        // Peer disconnected
-        socket.on('user-disconnected', id => {
-          log('User disconnected:', id);
-          if (pcMap.current[id]) {
-            pcMap.current[id].close();
-            delete pcMap.current[id];
-          }
-          setPeers(prev => {
-            const clone = { ...prev };
-            delete clone[id];
-            return clone;
-          });
-        });
+        socket.on('all-users', handleAllUsers);
+        socket.on('user-joined', handleUserJoined);
+        socket.on('offer', handleOffer);
+        socket.on('answer', handleAnswer);
+        socket.on('ice-candidate', handleIce);
+        socket.on('user-disconnected', handleDisconnect);
       } catch (err) {
-        console.error('[LiveClass] Error accessing media devices:', err);
+        console.error('[LiveClass] getUserMedia error', err);
       }
     };
 
-    log('Initializing room join for', roomId);
-    joinRoom();
+    const onConnect = () => {
+      myIdRef.current = socket.id;
+      log('connected as', socket.id);
+      joinRoom();
+    };
+
+    socket.on('connect', onConnect);
+    if (socket.connected) onConnect();
 
     return () => {
-      log('Cleaning up socket and peer connections');
-      socket.off('all-users');
-      socket.off('user-joined');
-      socket.off('offer');
-      socket.off('answer');
-      socket.off('ice-candidate');
-      socket.off('user-disconnected');
+      socket.off('connect', onConnect);
+      socket.off('all-users', handleAllUsers);
+      socket.off('user-joined', handleUserJoined);
+      socket.off('offer', handleOffer);
+      socket.off('answer', handleAnswer);
+      socket.off('ice-candidate', handleIce);
+      socket.off('user-disconnected', handleDisconnect);
       Object.values(pcMap.current).forEach(pc => pc.close());
       pcMap.current = {};
       setPeers({});
     };
   }, [roomId, userRole]);
 
-  const createPeerConnection = (peerId, isOfferer) => {
-    if (pcMap.current[peerId]) {
-      log('PeerConnection already exists for', peerId);
-      return pcMap.current[peerId];
-    }
-    log('Creating PeerConnection for', peerId, 'offerer:', isOfferer);
+  const createPeerConnection = (peerId, isOfferer, peerRole) => {
+    if (pcMap.current[peerId]) return pcMap.current[peerId];
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     pcMap.current[peerId] = pc;
 
-    // Add local tracks
-    localStreamRef.current.getTracks().forEach(track => {
-      pc.addTrack(track, localStreamRef.current);
-      log('Added local track to PC for', peerId, track.kind);
-    });
+    // local tracks
+    localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
 
-    // Prepare remote stream container
+    // remote stream
     const remoteStream = new MediaStream();
     pc.ontrack = e => {
       remoteStream.addTrack(e.track);
-      log('Received remote track from', peerId, e.track.kind);
+      setPeers(prev => ({ ...prev, [peerId]: { stream: remoteStream, role: peerRole } }));
     };
 
-    // ICE candidate event
+    // ICE
     pc.onicecandidate = e => {
-      if (e.candidate) {
-        socket.emit('ice-candidate', { target: peerId, candidate: e.candidate });
-        log('Sent ICE candidate to', peerId, e.candidate);
-      }
+      if (e.candidate) socket.emit('ice-candidate', { target: peerId, candidate: e.candidate });
     };
 
-    // Connection state changes
-    pc.onconnectionstatechange = () => {
-      log('Connection state for', peerId, pc.connectionState);
-      if (pc.connectionState === 'connected') {
-        setPeers(prev => ({ ...prev, [peerId]: remoteStream }));
-        log('Peer connected, adding to state:', peerId);
-      }
-      if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
-        log('Peer connection closed or failed for', peerId);
-        pc.close();
-        delete pcMap.current[peerId];
-        setPeers(prev => {
-          const clone = { ...prev };
-          delete clone[peerId];
-          return clone;
-        });
-      }
-    };
-
-    // Negotiation
     if (isOfferer) {
       pc.onnegotiationneeded = async () => {
         try {
-          log('Negotiation needed with', peerId);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
-          socket.emit('offer', { target: peerId, sdp: offer });
-          log('Sent offer to', peerId);
+          socket.emit('offer', { target: peerId, sdp: pc.localDescription, role: userRole });
         } catch (err) {
-          console.error('[LiveClass] Negotiation error', err);
+          console.error('[LiveClass] offer err', err);
         }
       };
     }
@@ -195,20 +141,39 @@ export default function LiveClassComponent({ roomId, userRole }) {
     return pc;
   };
 
+  // Styles
+  const gridStyle = { display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' };
+  const videoStyle = { width: '240px', height: '180px', borderRadius: '8px', border: '2px solid #ccc' };
+  const singleStyle = { ...videoStyle, width: '480px', height: '360px' };
+
+  // Render
+  const studentPeers = Object.entries(peers).filter(([_, p]) => p.role === 'STUDENT');
+  const instructorPeers = Object.entries(peers).filter(([_, p]) => p.role === 'INSTRUCTOR');
+
   return (
-    <div>
-      <h2>Role: {userRole}</h2>
-      <video ref={localVideoRef} autoPlay playsInline muted width={300} />
-      <h3>Remote Peers:</h3>
-      {Object.entries(peers).map(([id, stream]) => (
-        <video
-          key={id}
-          ref={el => el && (el.srcObject = stream)}
-          autoPlay
-          playsInline
-          width={300}
-        />
-      ))}
+    <div style={{ padding: '16px' }}>
+      <h2 style={{ textAlign: 'center' }}>Role: {userRole}</h2>
+      {userRole === 'INSTRUCTOR' ? (
+        <>
+          <h3>Your Preview</h3>
+          <video ref={localVideoRef} autoPlay muted style={videoStyle} />
+          <h3>Students</h3>
+          <div style={gridStyle}>
+            {studentPeers.map(([id, { stream }]) => (
+              <video key={id} ref={el => el && (el.srcObject = stream)} autoPlay style={videoStyle} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <h3>Instructor</h3>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+            {instructorPeers.map(([id, { stream }]) => (
+              <video key={id} ref={el => el && (el.srcObject = stream)} autoPlay style={singleStyle} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
