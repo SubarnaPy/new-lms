@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 
 const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
-const socket = io(SERVER_URL);
+const socket = io(SERVER_URL, {
+  transports: ['websocket', 'polling'],
+  withCredentials: true,
+});
 
 export default function LiveClassComponent({ roomId, userRole }) {
   const localVideoRef = useRef(null);
