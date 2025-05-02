@@ -4,17 +4,22 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchQuiz, markQuizeAsComplete, submitQuizAnswers } from "../../../Redux/quizeSlice";
 import { Spinner, Button, Radio, Dialog, DialogBody, DialogFooter } from "@material-tailwind/react";
 import { CheckCircleIcon, ClockIcon, TrophyIcon, ExclamationTriangleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
 
 const QuizPage = () => {
   const { courseId, sectionId, quizId } = useParams();
   const dispatch = useDispatch();
-  const { 
-    currentQuiz, 
-    loading, 
+  const {
+    currentQuiz,
+    loading,
     error,
     submitResult,
-    submitStatus 
+    submitStatus
   } = useSelector((state) => state.courseQuize);
+
+  const user = useSelector((state) => state.profile.data);
+  const completedQuizzes = user.courseProgress.find((item) => item.courseID === courseId)?.completedQuizzes || [];
+  const isQuizCompleted = completedQuizzes.includes(quizId);
 
   const [answers, setAnswers] = useState({});
   const [showConfirm, setShowConfirm] = useState(false);
@@ -44,18 +49,18 @@ const QuizPage = () => {
         selectedOption: answers[question._id] || null
       }));
 
-      const res=await dispatch(
+      const res = await dispatch(
         submitQuizAnswers({
           quizId: currentQuiz._id,
           answers: transformedAnswers
         })
-
       ).unwrap();
-      console.log(res)
 
-      if(res.status=="success"){
-        console.log("hi")
-      await dispatch( markQuizeAsComplete({courseId, quizId }))
+      if (res.status === "success") {
+        const resp = await dispatch(markQuizeAsComplete({ courseId, quizId }));
+        if (resp.payload?.success) {
+          toast.success(resp.payload.message);
+        }
       }
 
       setShowConfirm(false);
@@ -77,7 +82,7 @@ const QuizPage = () => {
         ) : (
           <CheckCircleIcon className="w-16 h-16 mx-auto text-green-500" />
         )}
-        
+
         <h3 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
           {submitResult?.scorePercentage >= 75 
             ? "Great Job!" 
@@ -167,9 +172,16 @@ const QuizPage = () => {
   return (
     <div className="min-h-screen dark:bg-gray-900">
       {scrollPosition > 100 && (
-        <div className="fixed top-0 left-0 right-0 z-50 shadow-sm bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
+        <div className="fixed top-0 left-0 right-0 z-40 shadow-sm bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
           <div className="flex items-center justify-between max-w-4xl px-4 py-3 mx-auto">
-            <h2 className="text-lg font-semibold truncate dark:text-white">{currentQuiz.title}</h2>
+            <h2 className="text-lg font-semibold truncate dark:text-white">
+              {currentQuiz.title}
+              {isQuizCompleted && (
+                <span className="ml-2 text-sm font-normal text-green-600 dark:text-green-400">
+                  (Submitted)
+                </span>
+              )}
+            </h2>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <TrophyIcon className="w-5 h-5 text-blue-500" />
@@ -195,6 +207,11 @@ const QuizPage = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                   {currentQuiz.title}
+                  {isQuizCompleted && (
+                    <span className="ml-2 text-sm font-medium text-green-600 dark:text-green-400">
+                      (Submitted)
+                    </span>
+                  )}
                 </h1>
                 <p className="mt-2 text-gray-600 dark:text-gray-300">
                   {currentQuiz.description}
@@ -282,7 +299,11 @@ const QuizPage = () => {
             <Button
               onClick={() => setShowConfirm(true)}
               disabled={submitStatus === 'loading'}
-              className="px-8 py-3 text-base font-medium transition-all duration-200 bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`px-8 py-3 text-base font-medium transition-all duration-200 rounded-lg ${
+                submitStatus === 'loading' 
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
               {submitStatus === 'loading' ? (
                 <div className="flex items-center space-x-2">
