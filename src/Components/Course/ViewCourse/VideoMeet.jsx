@@ -118,8 +118,6 @@ export default function LiveClassComponent({ roomId, userRole }) {
     return pc;
   };
 
-  console.log(userList)
-
   return (
     <div className="flex min-h-screen text-white bg-blue-900">
       {/* Left sidebar - students list */}
