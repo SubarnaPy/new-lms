@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 import {
   VideoCameraIcon,
-  VideoCameraSlashIcon,
+  SpeakerXMarkIcon, // Replace MicrophoneSlashIcon
   MicrophoneIcon,
+  VideoCameraSlashIcon,
+  // MicrophoneIcon,
   MicrophoneSlashIcon,
   PresentationChartBarIcon,
   StopCircleIcon,
@@ -266,7 +268,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
           {audioEnabled ? (
             <MicrophoneIcon className="w-6 h-6" />
           ) : (
-            <MicrophoneSlashIcon className="w-6 h-6" />
+            <SpeakerXMarkIcon className="w-6 h-6" />
           )}
         </button>
 
