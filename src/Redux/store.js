@@ -10,6 +10,7 @@ import profileSliceReducer from "./profileSlice";
 import viewCourseSlice from "./viewCourseSlice"
 import liveClassSlice from './liveClassSlice'
 import assignmentSliceReducer from './assignmentSlice'
+import quizeSliceReducer from "./quizeSlice"
 
 // No need to import redux-thunk separately because it's included in the default middleware of @reduxjs/toolkit
 
@@ -24,7 +25,9 @@ const store = configureStore({
     profile: profileSliceReducer,
     cart:cartSliceReducer,
     liveClass:liveClassSlice,
-    assignment:assignmentSliceReducer
+    assignment:assignmentSliceReducer,
+    courseQuize:quizeSliceReducer,
+
     
   },
   middleware: (getDefaultMiddleware) =>
