@@ -67,8 +67,12 @@ export default function LiveClassComponent({ roomId, userRole }) {
     const joinRoom = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideoRef.current.srcObject = stream;
         localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        } else {
+          log('localVideoRef not assigned yet');
+        }
         socket.emit('join-room', roomId, { role: userRole });
         log('join-room', roomId, userRole);
 
@@ -112,7 +116,9 @@ export default function LiveClassComponent({ roomId, userRole }) {
     pcMap.current[peerId] = pc;
 
     // local tracks
-    localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
+    }
 
     // remote stream
     const remoteStream = new MediaStream();
