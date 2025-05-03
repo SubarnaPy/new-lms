@@ -359,7 +359,7 @@ export default function LiveClassComponent({ roomId, userRole }) {
                   ref={e => e && (e.srcObject = stream)}
                   autoPlay
                   playsInline
-                  className="absolute inset-0 object-cover w-full h-full"
+                  className="absolute inset-0 object-cover w-full h-full p-5 m-6"
                 />
               )
             ))}
