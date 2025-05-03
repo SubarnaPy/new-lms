@@ -37,6 +37,7 @@ import { AllClasses, Announcements, BatchDetails, Description } from './Componen
 import { getProfile } from './Redux/profileSlice';
 import AssignmentPage from './Components/Course/ViewCourse/AssignmentPage';
 import QuizPage from './Components/Course/ViewCourse/QuizePage';
+import CodeCompiler from './Components/Course/ViewCourse/CodeCompiler';
 
 
 
@@ -100,6 +101,10 @@ const App = () => {
 <Route path="/payment-return" element={<PaymentReturnPage />} />
 
 <Route path="/verify-otp" element={<VerifyOtp />} />
+
+      {/* Other routes */}
+      <Route path="/compiler" element={<CodeCompiler />} />
+    
 
 <Route path="about-us" element={<AboutUs />} />
 

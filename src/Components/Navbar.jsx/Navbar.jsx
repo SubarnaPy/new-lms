@@ -84,20 +84,21 @@ const Navbar = () => {
         {/* Desktop Links */}
         <div className="items-center hidden space-x-6 lg:flex">
           <div className="flex space-x-6">
-            {[ 'Courses', 'About Us'].map((item) => (
-              <motion.button
-                key={item}
-                onClick={() => {
-                  
-                  if (item === 'Courses') handleCoursesClick();
-                  if (item === 'About Us') handleAboutUsClick();
-                }}
-                className="font-medium text-gray-600 transition-colors dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                whileHover={{ y: -2 }}
-              >
-                {item}
-              </motion.button>
-            ))}
+          
+{['Courses', 'About Us', 'Compiler'].map((item) => (
+  <motion.button
+    key={item}
+    onClick={() => {
+      if (item === 'Courses') handleCoursesClick();
+      if (item === 'About Us') handleAboutUsClick();
+      if (item === 'Compiler') navigate('/compiler');
+    }}
+    className="font-medium text-gray-600 transition-colors dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+    whileHover={{ y: -2 }}
+  >
+    {item}
+  </motion.button>
+))}
           </div>
 
           <div className="flex items-center ml-4 space-x-4">
@@ -226,21 +227,23 @@ const Navbar = () => {
 
                   {/* Mobile Navigation Links */}
                   <div className="space-y-3">
-                    {['Home', 'Courses', 'About Us'].map((item) => (
-                      <motion.button
-                        key={item}
-                        onClick={() => {
-                          if (item === 'Home') handleHomeClick();
-                          if (item === 'Courses') handleCoursesClick();
-                          if (item === 'About Us') handleAboutUsClick();
-                          toggleSidebar();
-                        }}
-                        className="w-full px-4 py-3 text-left text-gray-600 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-gray-800 dark:text-gray-300"
-                        whileHover={{ x: 5 }}
-                      >
-                        {item}
-                      </motion.button>
-                    ))}
+                  
+{['Home', 'Courses', 'About Us', 'Compiler'].map((item) => (
+  <motion.button
+    key={item}
+    onClick={() => {
+      if (item === 'Home') handleHomeClick();
+      if (item === 'Courses') handleCoursesClick();
+      if (item === 'About Us') handleAboutUsClick();
+      if (item === 'Compiler') navigate('/compiler');
+      toggleSidebar();
+    }}
+    className="w-full px-4 py-3 text-left text-gray-600 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-gray-800 dark:text-gray-300"
+    whileHover={{ x: 5 }}
+  >
+    {item}
+  </motion.button>
+))}
 
                     {isLoggedIn && (
                       <>
