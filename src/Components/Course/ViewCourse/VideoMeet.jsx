@@ -14,7 +14,7 @@ import {
   XMarkIcon,
   UserGroupIcon
 } from '@heroicons/react/24/solid';
-import { AcademicCapIcon, PaintBrushIcon } from '@heroicons/react/24/outline';
+import { AcademicCapIcon, ArrowsPointingOutIcon, HandRaisedIcon, PaintBrushIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
 const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 const socket = io(SERVER_URL, {
@@ -351,22 +351,80 @@ export default function LiveClassComponent({ roomId, userRole }) {
       <div className="flex flex-col flex-1 bg-gray-900">
         {userRole === 'STUDENT' ? (
           // Student View - Fullscreen Instructor Video
-          <div className="relative flex-1 bg-gray-800">
+          <div className="flex flex-col flex-1 p-4 bg-gray-900">
+          <div className="relative flex-1 overflow-hidden bg-gray-800 rounded-xl">
             {Object.entries(peers).map(([id, { stream, role }]) => (
               role === 'INSTRUCTOR' && (
-                <video
-                  key={id}
-                  ref={e => e && (e.srcObject = stream)}
-                  autoPlay
-                  playsInline
-                  className="absolute inset-0 object-cover h-full p-5 m-6 w-96"
-                />
+                <div key={id} className="relative w-full h-full group">
+                  {/* Video Container */}
+                  <video
+                    ref={e => e && (e.srcObject = stream)}
+                    autoPlay
+                    playsInline
+                    className="object-cover w-full h-full transition-opacity bg-gray-900"
+                    // onDoubleClick={() => document.fullscreenElement ? document.exitFullscreen() : requestFullscreen()}
+                  />
+                  
+                  {/* Overlay Information */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-gray-900/90 to-transparent">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span className="text-sm font-medium text-gray-100">
+                           - Live
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-300">
+                        Instructor: {id.slice(-6)}
+                      </div>
+                    </div>
+                  </div>
+        
+                  {/* Connection Quality Indicator */}
+                  <div className="absolute flex items-center gap-2 top-4 right-4">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-100">Excellent</span>
+                  </div>
+        
+                  {/* Floating Controls */}
+                  <div className="absolute top-0 left-0 flex gap-2 p-4 transition-opacity opacity-0 group-hover:opacity-100">
+                    <button className="p-2 text-gray-100 bg-gray-800 rounded-full hover:bg-gray-700">
+                      <PresentationChartBarIcon className="w-5 h-5" />
+                    </button>
+                    <button className="p-2 text-gray-100 bg-gray-800 rounded-full hover:bg-gray-700">
+                      <ArrowsPointingOutIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
               )
             ))}
-            <div className="absolute px-3 py-1 text-gray-300 rounded-lg bottom-4 left-4 bg-gray-900/80">
-              Live -
-            </div>
+            
+            {/* Fallback when no video */}
+            {!peers['INSTRUCTOR']?.stream && (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <VideoCameraSlashIcon className="w-16 h-16 text-gray-500" />
+                <h3 className="mt-4 text-xl font-medium text-gray-300">
+                  Instructor View Offline
+                </h3>
+                <p className="mt-2 text-gray-400">
+                  The instructor has stopped their video feed
+                </p>
+              </div>
+            )}
           </div>
+        
+          {/* Additional Student Controls */}
+          <div className="flex justify-center gap-4 mt-4">
+            <button className="flex items-center gap-2 px-4 py-2 text-gray-100 bg-gray-800 rounded-lg hover:bg-gray-700">
+              <HandRaisedIcon className="w-5 h-5" />
+              Raise Hand
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 text-gray-100 bg-gray-800 rounded-lg hover:bg-gray-700">
+              <QuestionMarkCircleIcon className="w-5 h-5" />
+              Ask Question
+            </button>
+          </div>
+        </div>
         ) : (
           // Instructor View - Whiteboard
           <div className="flex flex-col flex-1">
