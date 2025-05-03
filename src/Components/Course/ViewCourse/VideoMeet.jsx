@@ -5,8 +5,8 @@ import {
   SpeakerXMarkIcon, // Replace MicrophoneSlashIcon
   MicrophoneIcon,
   VideoCameraSlashIcon,
-  // MicrophoneIcon,
-  MicrophoneSlashIcon,
+  
+
   PresentationChartBarIcon,
   StopCircleIcon,
   PhoneXMarkIcon,
@@ -14,6 +14,15 @@ import {
   XMarkIcon,
   UserGroupIcon
 } from '@heroicons/react/24/solid';
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipArrow,
+} from "@radix-ui/react-tooltip";
+import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
+// import { Tooltip } from '@material-tailwind/react';
 
 const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 const socket = io(SERVER_URL, {
@@ -245,190 +254,214 @@ export default function LiveClassComponent({ roomId, userRole }) {
   // const instructorPeers = Object.entries(peers).filter(([,p]) => p.role==='INSTRUCTOR');
 
   return (
-    <div className="h-screen bg-gray-100">
-      {/* Controls Bar */}
-      <div className="flex justify-center gap-4 p-4 bg-white shadow-sm">
+    <div className="h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+  {/* Floating Controls */}
+  <div className="fixed flex gap-3 p-2 -translate-x-1/2 border border-gray-100 rounded-full shadow-lg bottom-6 left-1/2 bg-white/90 backdrop-blur-sm">
+    <Tooltip>
+      <TooltipTrigger asChild>
         <button 
           onClick={toggleVideo}
-          className="p-2 text-white transition-colors bg-blue-600 rounded-full hover:bg-blue-700"
-          title={videoEnabled ? "Disable Video" : "Enable Video"}
+          className="p-2.5 text-gray-600 transition-all hover:bg-gray-100 rounded-full"
         >
           {videoEnabled ? (
-            <VideoCameraIcon className="w-6 h-6" />
+            <VideoCameraIcon className="w-6 h-6 text-blue-600" />
           ) : (
-            <VideoCameraSlashIcon className="w-6 h-6" />
+            <VideoCameraSlashIcon className="w-6 h-6 text-red-600" />
           )}
         </button>
+      </TooltipTrigger>
+      <TooltipContent>{videoEnabled ? "Disable Video" : "Enable Video"}</TooltipContent>
+    </Tooltip>
 
+    <Tooltip>
+      <TooltipTrigger asChild>
         <button 
           onClick={toggleAudio}
-          className="p-2 text-white transition-colors bg-blue-600 rounded-full hover:bg-blue-700"
-          title={audioEnabled ? "Mute Audio" : "Unmute Audio"}
+          className="p-2.5 text-gray-600 transition-all hover:bg-gray-100 rounded-full"
         >
           {audioEnabled ? (
-            <MicrophoneIcon className="w-6 h-6" />
+            <MicrophoneIcon className="w-6 h-6 text-blue-600" />
           ) : (
-            <SpeakerXMarkIcon className="w-6 h-6" />
+            <SpeakerXMarkIcon className="w-6 h-6 text-red-600" />
           )}
         </button>
+      </TooltipTrigger>
+      <TooltipContent>{audioEnabled ? "Mute Audio" : "Unmute Audio"}</TooltipContent>
+    </Tooltip>
 
+    <Tooltip>
+      <TooltipTrigger asChild>
         <button 
           onClick={shareScreen}
-          className={`p-2 rounded-full transition-colors ${
-            screenSharing ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-          title={screenSharing ? "Stop Sharing" : "Share Screen"}
+          className="p-2.5 text-gray-600 transition-all hover:bg-gray-100 rounded-full"
         >
           {screenSharing ? (
-            <StopCircleIcon className="w-6 h-6" />
+            <StopCircleIcon className="w-6 h-6 text-red-600" />
           ) : (
-            <PresentationChartBarIcon className="w-6 h-6" />
+            <PresentationChartBarIcon className="w-6 h-6 text-purple-600" />
           )}
         </button>
+      </TooltipTrigger>
+      <TooltipContent>{screenSharing ? "Stop Sharing" : "Share Screen"}</TooltipContent>
+    </Tooltip>
 
+    <Tooltip>
+      <TooltipTrigger asChild>
         <button 
           onClick={endCall}
-          className="p-2 text-white transition-colors bg-red-600 rounded-full hover:bg-red-700"
-          title="End Call"
+          className="p-2.5 text-white transition-all bg-red-600 hover:bg-red-700 rounded-full"
         >
           <PhoneXMarkIcon className="w-6 h-6" />
         </button>
+      </TooltipTrigger>
+      <TooltipContent>End Call</TooltipContent>
+    </Tooltip>
+  </div>
+
+  {/* Main Layout */}
+  <div className="grid h-[calc(100vh-80px)] grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6 p-6">
+    {/* Participants Panel (Left) */}
+    {userRole === 'INSTRUCTOR' && (
+      <div className="p-4 overflow-hidden bg-white border border-gray-100 shadow-sm rounded-2xl">
+        <div className="flex items-center gap-3 mb-6">
+          <UserGroupIcon className="w-6 h-6 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-800">
+            Participants <span className="text-gray-500">({Object.keys(peers).length})</span>
+          </h3>
+        </div>
+        <div className="space-y-4 overflow-y-auto h-[calc(100vh-180px)]">
+          {Object.entries(peers).map(([id, { stream, role }]) => (
+            role === 'STUDENT' && (
+              <div key={id} className="relative p-3 transition-colors group rounded-xl bg-gray-50 hover:bg-blue-50">
+                <video 
+                  ref={e => e && (e.srcObject = stream)}
+                  autoPlay 
+                  playsInline 
+                  className="w-full bg-gray-200 rounded-lg aspect-video"
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-gray-700">Student {id.slice(0, 6)}</span>
+                </div>
+              </div>
+            )
+          ))}
+        </div>
       </div>
+    )}
 
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Participants Sidebar (Instructor Only) */}
-        {userRole === 'INSTRUCTOR' && (
-          <div className="w-64 p-4 overflow-y-auto bg-white border-r border-gray-200">
-            <div className="flex items-center gap-2 mb-4">
-              <UserGroupIcon className="w-6 h-6 text-gray-600" />
-              <h3 className="text-lg font-semibold">Participants ({Object.keys(peers).length})</h3>
+    {/* Main Content Area */}
+    <div className="flex flex-col gap-6">
+      {/* Instructor Preview / Student View */}
+      <div className="relative flex-1 overflow-hidden bg-white border border-gray-100 shadow-sm rounded-2xl">
+        {userRole === 'INSTRUCTOR' ? (
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-800">Your Camera Preview</h3>
             </div>
-            <div className="space-y-4">
-              {Object.entries(peers).map(([id, { stream, role }]) => (
-                role === 'STUDENT' && (
-                  <div key={id} className="p-2 rounded-lg shadow-sm bg-gray-50">
-                    <video 
-                      ref={e => e && (e.srcObject = stream)}
-                      autoPlay 
-                      playsInline 
-                      className="w-full bg-black rounded-lg aspect-video"
-                    />
-                    <p className="mt-1 text-sm text-gray-600 truncate">Student {id.slice(0, 6)}</p>
-                  </div>
-                )
-              ))}
-            </div>
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="flex-1 object-contain w-full bg-gray-800 rounded-b-2xl"
+            />
           </div>
-        )}
-
-        {/* Main Content */}
-        <div className="flex-1 p-6 overflow-auto">
-          {userRole === 'INSTRUCTOR' ? (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="p-4 bg-white shadow-sm rounded-xl">
-                <h3 className="mb-4 text-lg font-semibold">Your Preview</h3>
+        ) : (
+          <div className="grid h-full grid-cols-1 gap-4 p-4">
+            {Object.entries(peers).map(([id, { stream, role }]) => (
+              role === 'INSTRUCTOR' && (
                 <video
-                  ref={localVideoRef}
+                  key={id}
+                  ref={e => e && (e.srcObject = stream)}
                   autoPlay
                   playsInline
-                  muted
-                  className="w-full bg-black rounded-xl aspect-video"
+                  className="w-full h-full bg-gray-800 rounded-xl"
                 />
-              </div>
-
-              <div className="p-4 bg-white shadow-sm rounded-xl">
-                <h3 className="mb-4 text-lg font-semibold">Whiteboard</h3>
-                <Whiteboard roomId={roomId} editable={true} />
-              </div>
-            </div>
-          ) : (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="p-4 bg-white shadow-sm rounded-xl">
-                <h3 className="mb-4 text-lg font-semibold">Instructor View</h3>
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {Object.entries(peers).map(([id, { stream, role }]) => (
-                    role === 'INSTRUCTOR' && (
-                      <video
-                        key={id}
-                        ref={e => e && (e.srcObject = stream)}
-                        autoPlay
-                        playsInline
-                        className="w-full bg-black rounded-xl aspect-video"
-                      />
-                    )
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-4 bg-white shadow-sm rounded-xl">
-                <h3 className="mb-4 text-lg font-semibold">Class Whiteboard</h3>
-                <Whiteboard roomId={roomId} editable={false} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Chat Floating Button */}
-        <button
-          onClick={() => setIsChatOpen(true)}
-          className="fixed p-3 text-white transition-colors bg-blue-600 rounded-full shadow-lg bottom-4 right-4 hover:bg-blue-700"
-          title="Open Chat"
-        >
-          <ChatBubbleLeftRightIcon className="w-6 h-6" />
-        </button>
-
-        {/* Chat Modal */}
-        {isChatOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <div className="bg-white rounded-xl w-full max-w-md max-h-[80vh] flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <div className="flex items-center gap-2">
-                  <ChatBubbleLeftRightIcon className="w-6 h-6 text-blue-600" />
-                  <h3 className="text-lg font-semibold">Class Chat</h3>
-                </div>
-                <button
-                  onClick={() => setIsChatOpen(false)}
-                  className="p-1 text-gray-500 rounded-full hover:text-gray-700"
-                >
-                  <XMarkIcon className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-                {messages.map((m, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 text-sm font-medium text-blue-800 bg-blue-100 rounded-full">
-                      {m.sender === 'Me' ? 'Y' : m.sender.slice(0,1)}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{m.sender}</p>
-                      <p className="text-gray-600 break-words">{m.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-4 border-t border-gray-200">
-                <div className="flex gap-2">
-                  <input
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                    placeholder="Type your message..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={sendMessage}
-                    className="px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
-                  >
-                    Send
-                  </button>
-                </div>
-              </div>
-            </div>
+              )
+            ))}
           </div>
         )}
       </div>
+
+      {/* Whiteboard Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 h-[400px]">
+        <div className="p-4 border-b border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-800">
+            {userRole === 'INSTRUCTOR' ? "Class Whiteboard" : "Shared Whiteboard"}
+          </h3>
+        </div>
+        <Whiteboard 
+          roomId={roomId} 
+          editable={userRole === 'INSTRUCTOR'}
+          className="h-[calc(400px-57px)]"
+        />
+      </div>
     </div>
+
+    {/* Chat Panel (Right) */}
+    <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 transition-transform ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className="flex flex-col h-[calc(100vh-180px)]">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <ChatBubbleLeftRightIcon className="w-6 h-6 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-800">Class Chat</h3>
+          </div>
+          <button
+            onClick={() => setIsChatOpen(false)}
+            className="p-1 text-gray-400 transition-colors rounded-full hover:text-gray-600"
+          >
+            <XMarkIcon className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+          {messages.map((m, i) => (
+            <div key={i} className={`flex gap-3 ${m.sender === 'Me' ? 'justify-end' : ''}`}>
+              {m.sender !== 'Me' && (
+                <div className="flex items-center justify-center w-8 h-8 text-sm font-medium text-white bg-blue-600 rounded-full">
+                  {m.sender.slice(0,1)}
+                </div>
+              )}
+              <div className={`max-w-[75%] p-3 rounded-xl ${m.sender === 'Me' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                <p className="text-sm font-medium text-gray-700">{m.sender}</p>
+                <p className="mt-1 text-gray-600 break-words">{m.text}</p>
+                <span className="block mt-1 text-xs text-right text-gray-400">{m.timestamp}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-gray-100">
+          <div className="relative">
+            <input
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && sendMessage()}
+              placeholder="Type your message..."
+              className="w-full px-4 py-2 pr-12 bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={sendMessage}
+              className="absolute p-2 text-blue-600 -translate-y-1/2 right-2 top-1/2 hover:text-blue-700"
+            >
+              <PaperAirplaneIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Chat Toggle Button */}
+  {!isChatOpen && (
+    <button
+      onClick={() => setIsChatOpen(true)}
+      className="fixed p-3 text-white transition-colors bg-blue-600 rounded-full shadow-lg bottom-24 right-6 hover:bg-blue-700"
+    >
+      <ChatBubbleLeftRightIcon className="w-6 h-6" />
+    </button>
+  )}
+</div>
   );
 }
