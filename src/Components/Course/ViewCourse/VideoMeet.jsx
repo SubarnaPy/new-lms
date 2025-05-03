@@ -5,28 +5,16 @@ import {
   SpeakerXMarkIcon, // Replace MicrophoneSlashIcon
   MicrophoneIcon,
   VideoCameraSlashIcon,
-  
-
+  // MicrophoneIcon,
+  MicrophoneSlashIcon,
   PresentationChartBarIcon,
   StopCircleIcon,
   PhoneXMarkIcon,
   ChatBubbleLeftRightIcon,
   XMarkIcon,
-  UserGroupIcon,
-  HandRaisedIcon,
-  FolderArrowDownIcon,
-  SunIcon,
-  MoonIcon
+  UserGroupIcon
 } from '@heroicons/react/24/solid';
-import {
-  TooltipProvider,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipArrow,
-} from "@radix-ui/react-tooltip";
-import { PaperAirplaneIcon,FaceSmileIcon } from '@heroicons/react/24/outline';
-// import { Tooltip } from '@material-tailwind/react';
+import { AcademicCapIcon, PaintBrushIcon } from '@heroicons/react/24/outline';
 
 const SERVER_URL = 'https://new-mern-backend-cp5h.onrender.com';
 const socket = io(SERVER_URL, {
@@ -128,10 +116,6 @@ export default function LiveClassComponent({ roomId, userRole }) {
   const localStreamRef = useRef(null);
   const pcMap = useRef({});
   const myIdRef = useRef(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [raisedHands, setRaisedHands] = useState([]);
-  const [files, setFiles] = useState([]);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   // Controls state
   const [videoEnabled, setVideoEnabled] = useState(true);
@@ -149,54 +133,6 @@ export default function LiveClassComponent({ roomId, userRole }) {
     return () => socket.off('chat-message', onMsg);
   }, []);
 
-
-   // Raise hand functionality
-   const raiseHand = () => {
-    socket.emit('raise-hand', { userId: myIdRef.current });
-  };
-
-   // File handling
-   const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const fileData = {
-          name: file.name,
-          type: file.type,
-          data: event.target.result,
-          sender: myIdRef.current
-        };
-        socket.emit('send-file', fileData);
-        setFiles(prev => [...prev, fileData]);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-    // Add dark mode classes to main container
-    const themeClasses = `
-    ${isDarkMode ? 
-      'bg-gray-900 text-gray-100' : 
-      'bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900'}
-  `;
-
-  // Dark mode toggle
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    if(!isDarkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  };
-
-  useEffect(() => {
-    socket.on('raise-hand', (userId) => {
-      setRaisedHands(prev => [...new Set([...prev, userId])]);
-    });
-
-    socket.on('send-file', (fileData) => {
-      setFiles(prev => [...prev, fileData]);
-    });
-  }, []);
   // Signaling & media
   useEffect(() => {
     const handleAllUsers = users => users.forEach(({ id, role }) => createPeer(id, true, role));
@@ -300,238 +236,225 @@ export default function LiveClassComponent({ roomId, userRole }) {
     socket.disconnect();
   };
 
-    // Enhanced UI Components
-    const ControlButton = ({ icon: Icon, onClick, tooltip, active, variant }) => (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={onClick}
-            className={`
-              p-2.5 transition-all rounded-full
-              ${variant === 'danger' ? 'bg-red-600 hover:bg-red-700 text-white' :
-                active ? 'bg-blue-600 text-white' :
-                isDarkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}
-            `}
-          >
-            <Icon className="w-6 h-6" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
-          {tooltip}
-        </TooltipContent>
-      </Tooltip>
-    );
+  // Render
+  // const grid = { display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' };
+  // const videoStyle = { width: 240, height: 180, borderRadius: 8, border: '2px solid #ccc' };
+  // const bigVideo = { ...videoStyle, width: 480, height: 360 };
+  // const chatStyle = { border: '1px solid #ccc', padding: 8, width: 300, height: 400, overflowY: 'auto' };
 
+  // const studentPeers = Object.entries(peers).filter(([,p]) => p.role==='STUDENT');
+  // const instructorPeers = Object.entries(peers).filter(([,p]) => p.role==='INSTRUCTOR');
 
+  const ControlButton = ({ icon: Icon, onClick, active, label, variant = 'default' }) => (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+        variant === 'red' 
+          ? 'bg-red-600 hover:bg-red-700' 
+          : active 
+            ? 'bg-gray-700 hover:bg-gray-600' 
+            : 'bg-gray-600 hover:bg-gray-500'
+      } text-white`}
+    >
+      <Icon className="w-5 h-5" />
+      <span className="text-sm">{label}</span>
+    </button>
+  );
 
   return (
-<div className={`h-screen transition-colors duration-300 ${themeClasses}`}>
-      {/* Enhanced Floating Controls */}
-      <div className={`fixed flex gap-3 p-2 -translate-x-1/2 rounded-full shadow-lg bottom-6 left-1/2 
-        ${isDarkMode ? 'bg-gray-800/80 border-gray-700' : 'bg-white/90 border-gray-100'} 
-        border backdrop-blur-sm`}>
-        
-        <ControlButton
-          icon={isDarkMode ? MoonIcon : SunIcon}
-          onClick={toggleDarkMode}
-          tooltip="Toggle Theme"
-        />
-
-        <ControlButton
-          icon={videoEnabled ? VideoCameraIcon : VideoCameraSlashIcon}
-          onClick={toggleVideo}
-          tooltip={videoEnabled ? "Disable Video" : "Enable Video"}
-          active={videoEnabled}
-        />
-
-        <ControlButton
-          icon={audioEnabled ? MicrophoneIcon : SpeakerXMarkIcon}
-          onClick={toggleAudio}
-          tooltip={audioEnabled ? "Mute Audio" : "Unmute Audio"}
-          active={audioEnabled}
-        />
-
-        {userRole === 'STUDENT' && (
-          <ControlButton
-            icon={HandRaisedIcon}
-            onClick={raiseHand}
-            tooltip="Raise Hand"
-            active={raisedHands.includes(myIdRef.current)}
-          />
-        )}
-
-        <ControlButton
-          icon={screenSharing ? StopCircleIcon : PresentationChartBarIcon}
-          onClick={shareScreen}
-          tooltip={screenSharing ? "Stop Sharing" : "Share Screen"}
-          active={screenSharing}
-        />
-
-        <ControlButton
-          icon={PhoneXMarkIcon}
-          onClick={endCall}
-          tooltip="End Call"
-          variant="danger"
-        />
+    <div className="flex flex-col h-screen bg-gray-900">
+  {/* Top Controls */}
+  <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+    <div className="flex items-center gap-2">
+      <AcademicCapIcon className="w-6 h-6 text-blue-500" />
+      <span className="text-xl font-bold text-gray-100">Virtual Classroom</span>
+      <div className="px-2 py-1 ml-4 text-sm text-gray-300 bg-gray-700 rounded-md">
+        {roomId}
       </div>
+    </div>
+    
+    <div className="flex gap-3">
+      <ControlButton
+        icon={videoEnabled ? VideoCameraIcon : VideoCameraSlashIcon}
+        onClick={toggleVideo}
+        active={videoEnabled}
+        label={videoEnabled ? "Video On" : "Video Off"}
+      />
+      <ControlButton
+        icon={audioEnabled ? MicrophoneIcon : SpeakerXMarkIcon}
+        onClick={toggleAudio}
+        active={audioEnabled}
+        label={audioEnabled ? "Mic On" : "Mic Off"}
+      />
+      <ControlButton
+        icon={screenSharing ? StopCircleIcon : PresentationChartBarIcon}
+        onClick={shareScreen}
+        active={screenSharing}
+        label={screenSharing ? "Stop Sharing" : "Share Screen"}
+        variant={screenSharing ? "red" : "default"}
+      />
+      <button
+        onClick={endCall}
+        className="flex items-center gap-2 px-4 py-2 text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
+      >
+        <PhoneXMarkIcon className="w-5 h-5" />
+        <span>Leave</span>
+      </button>
+    </div>
+  </div>
 
-      {/* Enhanced Main Layout */}
-      <div className="grid h-[calc(100vh-80px)] grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6 p-6">
-        {/* Participants Panel with Raised Hands */}
-        {userRole === 'INSTRUCTOR' && (
-          <div className={`p-4 rounded-2xl shadow-sm border 
-            ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
-            {/* ... participants list */}
-            {raisedHands.length > 0 && (
-              <div className="p-3 mt-4 rounded-lg bg-blue-100/20">
-                <h4 className="flex items-center gap-2 text-sm font-semibold text-blue-500">
-                  <HandRaisedIcon className="w-5 h-5" />
-                  Raised Hands ({raisedHands.length})
-                </h4>
-                {raisedHands.map(id => (
-                  <div key={id} className="flex items-center gap-2 mt-2 text-sm">
-                    <span>Student {id.slice(0,6)}</span>
-                    <button 
-                      onClick={() => setRaisedHands(prev => prev.filter(i => i !== id))}
-                      className="ml-auto text-red-500 hover:text-red-600"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Enhanced Whiteboard Section */}
-        <div className={`rounded-2xl shadow-sm border 
-          ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-semibold">
-              {userRole === 'INSTRUCTOR' ? "Class Whiteboard" : "Shared Whiteboard"}
-            </h3>
-            <div className="flex gap-2">
-              <button className="p-2 rounded-lg hover:bg-gray-100/20">
-                <FolderArrowDownIcon className="w-5 h-5" />
-              </button>
-              {userRole === 'INSTRUCTOR' && (
-                <button className="p-2 rounded-lg hover:bg-gray-100/20">
-                  <HandRaisedIcon className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
-          <Whiteboard 
-            roomId={roomId} 
-            editable={userRole === 'INSTRUCTOR'}
-            className={`${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}
-          />
+  {/* Main Content */}
+  <div className="flex flex-1 overflow-hidden">
+    {/* Participants Column (Instructor Only) */}
+    {userRole === 'INSTRUCTOR' && (
+      <div className="flex flex-col bg-gray-800 border-r border-gray-700 w-80">
+        <div className="p-4 border-b border-gray-700">
+          <h3 className="flex items-center gap-2 font-semibold text-gray-300">
+            <UserGroupIcon className="w-5 h-5" />
+            Participants ({Object.keys(peers).length + 1})
+          </h3>
         </div>
-
-        {/* Enhanced Chat Panel with File Sharing */}
-        <div className={`rounded-2xl shadow-sm border transition-transform
-          ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}
-          ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-
-          {/* Chat header with file upload */}
-          <div className="flex items-center justify-between p-4 border-b">
-            <div className="flex items-center gap-3">
-              <ChatBubbleLeftRightIcon className="w-6 h-6 text-blue-500" />
-              <h3 className="font-semibold">Class Chat</h3>
-            </div>
-            <div className="flex gap-2">
-              <label className="p-1 rounded-lg cursor-pointer hover:bg-gray-100/20">
-                <FolderArrowDownIcon className="w-5 h-5" />
-                <input type="file" className="hidden" onChange={handleFileUpload} />
-              </label>
-              <button 
-                onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
-                className="p-1 rounded-lg hover:bg-gray-100/20"
-              >
-                <FaceSmileIcon className="w-5 h-5" />
-              </button>
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+          {/* Self Preview */}
+          <div className="relative group">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full bg-gray-900 rounded-lg aspect-video"
+            />
+            <div className="absolute px-2 py-1 text-sm text-gray-300 rounded-md bottom-2 left-2 bg-gray-900/80">
+              You (Instructor)
             </div>
           </div>
 
-          {/* Chat messages with files */}
-          <div className="p-4 space-y-4 overflow-y-auto">
-            {files.map((file, i) => (
-              <div key={`file-${i}`} className="p-3 rounded-lg bg-blue-100/20">
-                <div className="flex items-center gap-2">
-                  <FolderArrowDownIcon className="w-5 h-5 text-blue-500" />
-                  <a 
-                    href={file.data} 
-                    download={file.name}
-                    className="text-blue-500 hover:underline"
-                  >
-                    {file.name}
-                  </a>
+          {/* Student List */}
+          {Object.entries(peers).map(([id, { stream, role }]) => (
+            role === 'STUDENT' && (
+              <div key={id} className="relative group">
+                <video 
+                  ref={e => e && (e.srcObject = stream)}
+                  autoPlay 
+                  playsInline 
+                  className="w-full bg-gray-900 rounded-lg aspect-video"
+                />
+                <div className="absolute px-2 py-1 text-sm text-gray-300 rounded-md bottom-2 left-2 bg-gray-900/80">
+                  Student {id.slice(-4)}
                 </div>
-                <p className="mt-1 text-sm text-gray-500">From: {file.sender}</p>
               </div>
-            ))}
-
-        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex gap-3 ${m.sender === 'Me' ? 'justify-end' : ''}`}>
-              {m.sender !== 'Me' && (
-                <div className="flex items-center justify-center w-8 h-8 text-sm font-medium text-white bg-blue-600 rounded-full">
-                  {m.sender.slice(0,1)}
-                </div>
-              )}
-              <div className={`max-w-[75%] p-3 rounded-xl ${m.sender === 'Me' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                <p className="text-sm font-medium text-gray-700">{m.sender}</p>
-                <p className="mt-1 text-gray-600 break-words">{m.text}</p>
-                <span className="block mt-1 text-xs text-right text-gray-400">{m.timestamp}</span>
-              </div>
-            </div>
+            )
           ))}
         </div>
+      </div>
+    )}
 
-        <div className="p-4 border-t border-gray-100">
-          <div className="relative">
-            <input
-              value={chatInput}
-              onChange={e => setChatInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendMessage()}
-              placeholder="Type your message..."
-              className="w-full px-4 py-2 pr-12 bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={sendMessage}
-              className="absolute p-2 text-blue-600 -translate-y-1/2 right-2 top-1/2 hover:text-blue-700"
-            >
-              <PaperAirplaneIcon className="w-5 h-5" />
-            </button>
+    {/* Main Stage */}
+    <div className="flex flex-col flex-1 bg-gray-900">
+      {/* Instructor View for Students */}
+      {userRole === 'STUDENT' && (
+        <div className="flex flex-col flex-1 p-4">
+          <div className="relative flex-1 overflow-hidden bg-gray-800 rounded-xl">
+            {Object.entries(peers).map(([id, { stream, role }]) => (
+              role === 'INSTRUCTOR' && (
+                <video
+                  key={id}
+                  ref={e => e && (e.srcObject = stream)}
+                  autoPlay
+                  playsInline
+                  className="absolute inset-0 object-cover w-full h-full"
+                />
+              )
+            ))}
+            <div className="absolute px-3 py-1 text-gray-300 rounded-lg bottom-4 left-4 bg-gray-900/80">
+            {/* {courseName} */}
+              Live - 
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Whiteboard Section */}
+      <div className="h-[400px] border-t border-gray-800">
+        <div className="p-4 bg-gray-800">
+          <h3 className="flex items-center gap-2 mb-2 font-semibold text-gray-300">
+            <PaintBrushIcon className="w-5 h-5" />
+            Collaborative Whiteboard
+          </h3>
+        </div>
+        <Whiteboard 
+          roomId={roomId} 
+          editable={userRole === 'INSTRUCTOR'}
+          className="bg-white h-[calc(100%-56px)]"
+        />
+      </div>
+    </div>
+
+    {/* Chat Sidebar */}
+    <div className={`w-96 bg-gray-800 border-l border-gray-700 flex flex-col ${isChatOpen ? 'block' : 'hidden'}`}>
+      <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <h3 className="flex items-center gap-2 font-semibold text-gray-300">
+          <ChatBubbleLeftRightIcon className="w-5 h-5" />
+          Class Chat
+        </h3>
+        <button
+          onClick={() => setIsChatOpen(false)}
+          className="text-gray-400 hover:text-gray-200"
+        >
+          <XMarkIcon className="w-6 h-6" />
+        </button>
+      </div>
+
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.sender === 'Me' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] rounded-lg p-3 ${m.sender === 'Me' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+              <div className="mb-1 text-sm font-medium">
+                {m.sender === 'Me' ? 'You' : m.sender}
+              </div>
+              <div className="text-sm break-words">{m.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 border-t border-gray-700">
+        <div className="flex gap-2">
+          <input
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && sendMessage()}
+            placeholder="Type a message..."
+            className="flex-1 px-4 py-2 text-gray-300 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+          <button
+            onClick={sendMessage}
+            className="px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+          >
+            Send
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  {/* Chat Toggle Button */}
+  {/* Chat Toggle */}
   {!isChatOpen && (
     <button
       onClick={() => setIsChatOpen(true)}
-      className="fixed p-3 text-white transition-colors bg-blue-600 rounded-full shadow-lg bottom-24 right-6 hover:bg-blue-700"
+      className="fixed p-3 text-white transition-colors bg-blue-600 rounded-full shadow-lg bottom-4 right-4 hover:bg-blue-700 group"
     >
       <ChatBubbleLeftRightIcon className="w-6 h-6" />
+      {/* {unreadMessages > 0 && (
+        <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-red-500 rounded-full -top-2 -right-2">
+          {unreadMessages}
+        </span>
+      )} */}
     </button>
   )}
+</div>
 
-        {/* Additional UI Enhancements */}
-        {screenSharing && (
-        <div className="fixed px-3 py-1 text-sm text-white rounded-full bottom-24 left-6 bg-red-500/90">
-          Screen Sharing Active
-        </div>
-      )}
+// Reusable ControlButton component
 
-      {userRole === 'STUDENT' && raisedHands.includes(myIdRef.current) && (
-        <div className="fixed px-3 py-1 text-sm text-white rounded-full bottom-24 left-6 bg-green-500/90">
-          Hand Raised ✓
-        </div>
-      )}
-    </div>
   );
 }
