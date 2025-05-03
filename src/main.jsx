@@ -7,6 +7,8 @@ import store from "./Redux/store";
 import { Provider } from "react-redux";
 import { Toaster } from "react-hot-toast";
 import { DarkModeProvider } from "./Layouts/DarkModeContext";
+import { TooltipProvider } from '@radix-ui/react-tooltip';
+
 // import { DarkModeProvider } from "./context/DarkModeContext"; // Import DarkModeProvider
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
@@ -15,7 +17,9 @@ root.render(
     <Provider store={store}>
       <BrowserRouter>
         <DarkModeProvider> {/* Wrap App with DarkModeProvider */}
-          <App />
+        <TooltipProvider>
+      <App />
+    </TooltipProvider>
           <Toaster />
         </DarkModeProvider>
       </BrowserRouter>
