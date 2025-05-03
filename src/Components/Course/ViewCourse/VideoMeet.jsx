@@ -351,80 +351,67 @@ export default function LiveClassComponent({ roomId, userRole }) {
       <div className="flex flex-col flex-1 bg-gray-900">
         {userRole === 'STUDENT' ? (
           // Student View - Fullscreen Instructor Video
-          <div className="flex flex-col flex-1 p-4 bg-gray-900">
-          <div className="relative flex-1 overflow-hidden bg-gray-800 rounded-xl">
-            {Object.entries(peers).map(([id, { stream, role }]) => (
-              role === 'INSTRUCTOR' && (
-                <div key={id} className="relative w-full h-full group">
-                  {/* Video Container */}
-                  <video
-                    ref={e => e && (e.srcObject = stream)}
-                    autoPlay
-                    playsInline
-                    className="object-cover w-full h-full transition-opacity bg-gray-900"
-                    // onDoubleClick={() => document.fullscreenElement ? document.exitFullscreen() : requestFullscreen()}
-                  />
-                  
-                  {/* Overlay Information */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-gray-900/90 to-transparent">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        <span className="text-sm font-medium text-gray-100">
-                           - Live
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-300">
-                        Instructor: {id.slice(-6)}
-                      </div>
-                    </div>
-                  </div>
-        
-                  {/* Connection Quality Indicator */}
-                  <div className="absolute flex items-center gap-2 top-4 right-4">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-100">Excellent</span>
-                  </div>
-        
-                  {/* Floating Controls */}
-                  <div className="absolute top-0 left-0 flex gap-2 p-4 transition-opacity opacity-0 group-hover:opacity-100">
-                    <button className="p-2 text-gray-100 bg-gray-800 rounded-full hover:bg-gray-700">
-                      <PresentationChartBarIcon className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 text-gray-100 bg-gray-800 rounded-full hover:bg-gray-700">
-                      <ArrowsPointingOutIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              )
-            ))}
-            
-            {/* Fallback when no video */}
-            {!peers['INSTRUCTOR']?.stream && (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <VideoCameraSlashIcon className="w-16 h-16 text-gray-500" />
-                <h3 className="mt-4 text-xl font-medium text-gray-300">
-                  Instructor View Offline
-                </h3>
-                <p className="mt-2 text-gray-400">
-                  The instructor has stopped their video feed
-                </p>
+          <div className="relative flex items-center justify-center flex-1 p-4 bg-gray-900">
+  <div className="w-full max-w-4xl mx-auto overflow-hidden bg-gray-800 shadow-xl aspect-video rounded-xl">
+    {Object.entries(peers).map(([id, { stream, role }]) => (
+      role === 'INSTRUCTOR' && (
+        <div 
+          key={id}
+          className="relative w-full h-full group"
+          onDoubleClick={(e) => {
+            if (document.fullscreenElement) {
+              document.exitFullscreen();
+            } else {
+              e.currentTarget.requestFullscreen().catch(console.error);
+            }
+          }}
+        >
+          <video
+            ref={e => e && (e.srcObject = stream)}
+            autoPlay
+            playsInline
+            className="object-contain w-full h-full bg-gray-900"
+          />
+
+          {/* Video Overlay */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-gray-900/90 to-transparent">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span className="text-sm font-medium text-gray-100">
+                  - Live Session
+                </span>
               </div>
-            )}
+              <span className="text-sm text-gray-300">
+                {!document.fullscreenElement && "Double click to fullscreen"}
+              </span>
+            </div>
           </div>
-        
-          {/* Additional Student Controls */}
-          <div className="flex justify-center gap-4 mt-4">
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-100 bg-gray-800 rounded-lg hover:bg-gray-700">
-              <HandRaisedIcon className="w-5 h-5" />
-              Raise Hand
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-100 bg-gray-800 rounded-lg hover:bg-gray-700">
-              <QuestionMarkCircleIcon className="w-5 h-5" />
-              Ask Question
+
+          {/* Top-right Controls */}
+          <div className="absolute flex gap-2 transition-opacity opacity-0 top-4 right-4 group-hover:opacity-100">
+            <button className="p-2 text-gray-100 rounded-lg bg-gray-800/80 hover:bg-gray-700/80 backdrop-blur-sm">
+              <ArrowsPointingOutIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
+      )
+    ))}
+
+    {/* Fallback Content */}
+    {!peers['INSTRUCTOR']?.stream && (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+        <VideoCameraSlashIcon className="w-16 h-16 mb-4 text-gray-600" />
+        <h3 className="mb-2 text-xl font-medium text-gray-300">
+          Instructor View Unavailable
+        </h3>
+        <p className="max-w-md text-gray-400">
+          The instructor's video feed will appear here when they start streaming
+        </p>
+      </div>
+    )}
+  </div>
+</div>
         ) : (
           // Instructor View - Whiteboard
           <div className="flex flex-col flex-1">
