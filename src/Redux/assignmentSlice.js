@@ -50,22 +50,23 @@ export const submitAssignment = createAsyncThunk(
 );
 
 // Grade an assignment (for teachers)
-export const gradeAssignment = async ({ courseId, sectionId, assignmentId, studentId, grade, verified }) => {
-  try {
-    const response = await axiosInstance.put(
-      `/courses/${courseId}/sections/${sectionId}/assignments/${assignmentId}/grade`,
-      {
-        studentId,
+export const gradeAssignment = createAsyncThunk(
+  "assignment/gradeAssignment",
+  async ({ assignmentId, submissionId, grade, verified }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(`/courses/grade/gradeAssignment`, {
+        assignmentId,
+        submissionId,
         grade,
         verified,
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Error grading assignment:", error);
-    throw error;
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error grading assignment:", error);
+      return rejectWithValue(error.response?.data || { message: "Something went wrong" });
+    }
   }
-};
+);
 
 // ✅ Fetch Assignments by Course ID
 export const fetchAssignments = createAsyncThunk(

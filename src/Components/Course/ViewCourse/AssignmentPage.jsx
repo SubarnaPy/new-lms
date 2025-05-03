@@ -152,37 +152,37 @@
 
 //   if (loading) {
 //     return (
-//       <div className="flex justify-center items-center h-screen">
+//       <div className="flex items-center justify-center h-screen">
 //         <Spinner color="blue" />
 //       </div>
 //     );
 //   }
 
 //   if (!assignment) {
-//     return <div className="text-center mt-10">Assignment not found!</div>;
+//     return <div className="mt-10 text-center">Assignment not found!</div>;
 //   }
 
 //   return (
 //     <div
 //       className={`${darkMode ? "dark" : ""} min-h-screen transition-colors duration-300`}
 //     >
-//       <div className="p-6 max-w-4xl mx-auto dark:bg-gray-900 dark:text-gray-100">
+//       <div className="max-w-4xl p-6 mx-auto dark:bg-gray-900 dark:text-gray-100">
 //         {/* Header with Dark Mode Toggle */}
-//         <div className="flex justify-between items-center mb-6">
+//         <div className="flex items-center justify-between mb-6">
 //           <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-200">
 //             {assignment.title}
 //           </h1>
 //           <button
 //             onClick={() => setDarkMode(!darkMode)}
-//             className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 transition"
+//             className="p-2 transition bg-gray-200 rounded-full dark:bg-gray-700"
 //           >
 //             {darkMode ? "☀️" : "🌙"}
 //           </button>
 //         </div>
 
 //         {/* Assignment Details */}
-//         <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
-//           <h2 className="text-2xl font-semibold mb-2">{assignment.title}</h2>
+//         <div className="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+//           <h2 className="mb-2 text-2xl font-semibold">{assignment.title}</h2>
 //           <p className="text-gray-600 dark:text-gray-300">
 //             {assignment.description}
 //           </p>
@@ -193,7 +193,7 @@
 //               {new Date(assignment.dueDate).toLocaleDateString()}
 //             </p>
 
-//             <h3 className="text-xl font-medium mt-4">Status:</h3>
+//             <h3 className="mt-4 text-xl font-medium">Status:</h3>
 //             <p
 //               className={`text-lg font-bold ${
 //                 status === "Submitted"
@@ -216,12 +216,12 @@
 //             <input
 //               type="file"
 //               onChange={handleFileChange}
-//               className="block w-full border rounded-md p-2"
+//               className="block w-full p-2 border rounded-md"
 //             />
 
 //             <button
 //               onClick={handleSubmit}
-//               className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md flex items-center justify-center"
+//               className="flex items-center justify-center px-4 py-2 mt-4 text-white bg-blue-500 rounded-md"
 //               disabled={submitting}
 //             >
 //               {submitting ? (
@@ -242,7 +242,7 @@
 //             <h3 className="text-xl font-medium">All Submissions:</h3>
 //             {submissions.length > 0 ? (
 //               submissions.map((submission) => (
-//                 <div key={submission._id} className="bg-gray-100 rounded-md p-4 my-4">
+//                 <div key={submission._id} className="p-4 my-4 bg-gray-100 rounded-md">
 //                   <p className="text-lg font-medium">{submission.studentName}</p>
 //                   <a href={submission.fileUrl} target="_blank" className="text-blue-500">
 //                     Download Submission
@@ -303,18 +303,19 @@ const AssignmentPage = () => {
         }
 
         if (userRole === "INSTRUCTOR") {
-          const submissionRes = await dispatch(
-            fetchSubmissions({ assignmentId })
-          );
+          const submissionRes = await dispatch(fetchSubmissions({ assignmentId }));
+        
           if (submissionRes.payload) {
-            setSubmissions(submissionRes.payload);
-
-            const allGraded = submissionRes?.payload?.every(
-              (sub) => sub.grade !== null
-            );
+            const submissionList = submissionRes.payload.submissions;
+            console.log(submissionList);
+        
+            setSubmissions(submissionList);
+        
+            const allGraded = submissionList.every((sub) => sub.grade !== null);
             setStatus(allGraded ? "Graded" : "Submitted");
           }
-        } else {
+        }
+        else {
           const submissionRes = await dispatch(
             fetchSubmissions({ assignmentId })
           );
@@ -331,6 +332,8 @@ const AssignmentPage = () => {
         setLoading(false);
       }
     };
+
+
 
     fetchData();
   }, [dispatch, courseId, sectionId, assignmentId, userRole, studentId]);
@@ -373,6 +376,8 @@ const AssignmentPage = () => {
     }
   };
 
+  console.log(submissions)
+
   const handleGradeChange = (submissionId, grade) => {
     setGrades((prev) => ({
       ...prev,
@@ -381,6 +386,7 @@ const AssignmentPage = () => {
   };
 
   const handleGradeSubmit = async (submissionId) => {
+    console.log(submissionId,assignmentId)
     try {
       const res = await dispatch(
         gradeAssignment({
@@ -390,13 +396,17 @@ const AssignmentPage = () => {
           verified: true,
         })
       );
+      console.log(res)
 
       if (res.payload.success) {
         setMessage("Assignment graded successfully!");
         const updatedSubmissions = await dispatch(
           fetchSubmissions({ assignmentId })
         );
-        setSubmissions(updatedSubmissions.payload);
+        const submissionList = updatedSubmissions.payload.submissions;
+        console.log(submissionList);
+    
+        setSubmissions(submissionList);
 
         const allGraded = updatedSubmissions.payload.every(
           (sub) => sub.grade !== null
@@ -406,7 +416,7 @@ const AssignmentPage = () => {
         setMessage("Failed to grade assignment.");
       }
     } catch (error) {
-      console.error("Error grading assignment:", error);
+      console.log("Error grading assignment:", error);
     }
   };
 
@@ -432,35 +442,35 @@ const AssignmentPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex items-center justify-center h-screen">
         <Spinner color="blue" />
       </div>
     );
   }
 
   if (!assignment) {
-    return <div className="text-center mt-10">Assignment not found!</div>;
+    return <div className="mt-10 text-center">Assignment not found!</div>;
   }
 
   return (
     <div
       className={`${darkMode ? "dark" : ""} min-h-screen transition-colors duration-300`}
     >
-      <div className="p-6 max-w-4xl mx-auto dark:bg-gray-900 dark:text-gray-100">
-        <div className="flex justify-between items-center mb-6">
+      <div className="max-w-4xl p-6 mx-auto dark:bg-gray-900 dark:text-gray-100">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-200">
             {assignment.title}
           </h1>
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 transition"
+            className="p-2 transition bg-gray-200 rounded-full dark:bg-gray-700"
           >
             {darkMode ? "☀️" : "🌙"}
           </button>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
-          <h2 className="text-2xl font-semibold mb-2">{assignment.title}</h2>
+        <div className="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+          <h2 className="mb-2 text-2xl font-semibold">{assignment.title}</h2>
           <p className="text-gray-600 dark:text-gray-300">
             {assignment.description}
           </p>
@@ -471,7 +481,7 @@ const AssignmentPage = () => {
               {new Date(assignment.dueDate).toLocaleDateString()}
             </p>
 
-            <h3 className="text-xl font-medium mt-4">Status:</h3>
+            <h3 className="mt-4 text-xl font-medium">Status:</h3>
             <p
               className={`text-lg font-bold ${
                 status === "Submitted"
@@ -495,12 +505,12 @@ const AssignmentPage = () => {
             <input
               type="file"
               onChange={handleFileChange}
-              className="block w-full border rounded-md p-2"
+              className="block w-full p-2 border rounded-md"
             />
 
             <button
               onClick={handleSubmit}
-              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md"
+              className="px-4 py-2 mt-4 text-white bg-blue-500 rounded-md"
               disabled={submitting}
             >
               {submitting ? "Submitting..." : "Submit"}
@@ -508,12 +518,70 @@ const AssignmentPage = () => {
 
             <button
               onClick={handleMarkComplete}
-              className="mt-4 ml-4 bg-green-500 text-white px-4 py-2 rounded-md"
+              className="px-4 py-2 mt-4 ml-4 text-white bg-green-500 rounded-md"
             >
               Mark as Complete
             </button>
           </div>
         )}
+         {/* Teacher's View: All Submissions */}
+         {userRole === "INSTRUCTOR" && (
+  <div className="mt-8">
+    <h3 className="text-xl font-medium">All Submissions:</h3>
+    {submissions.length > 0 ? (
+      submissions.map((submission) => {
+        const isGraded = submission.marksObtained !== undefined && submission.marksObtained !== null;
+
+        return (
+          <div key={submission._id} className="p-4 my-4 bg-gray-100 rounded-md">
+            <p className="text-lg font-medium">
+              {submission.studentId?.email || "Unknown Student"}
+            </p>
+
+            {submission.submittedFiles.length > 0 && (
+              <a
+                href={submission.submittedFiles[0].secure_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500"
+              >
+                Download Submission
+              </a>
+            )}
+
+            {/* Evaluation status */}
+            <p className={`mt-2 font-medium ${isGraded ? "text-green-600" : "text-yellow-600"}`}>
+              {isGraded ? `Evaluated: ${submission.marksObtained} marks` : "Not yet evaluated"}
+            </p>
+
+            {/* Grade input */}
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={grades[submission._id] ?? ""}
+                onChange={(e) => handleGradeChange(submission._id, e.target.value)}
+                placeholder="Enter grade"
+                className="w-24 px-2 py-1 border rounded"
+              />
+              <button
+                onClick={() => handleGradeSubmit(submission._id)}
+                className="px-3 py-1 text-white bg-blue-500 rounded hover:bg-blue-600"
+              >
+                Submit Grade
+              </button>
+            </div>
+          </div>
+        );
+      })
+    ) : (
+      <p>No submissions yet.</p>
+    )}
+  </div>
+)}
+
+
 
         {message && <div className="mt-4 text-green-500">{message}</div>}
       </div>

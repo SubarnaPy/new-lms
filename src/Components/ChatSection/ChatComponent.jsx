@@ -14,6 +14,7 @@ import {
   FaPause,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../Helpers/axiosInstance";
 
 const ChatComponent = ({ courseId, userId }) => {
   const [messages, setMessages] = useState([]);
@@ -50,8 +51,8 @@ const ChatComponent = ({ courseId, userId }) => {
 
     const fetchChatHistory = async () => {
       try {
-        const response = await axios.get(
-          `https://new-mern-backend-cp5h.onrender.com/api/v1/chat/${courseId}`,
+        const response = await axiosInstance.get(
+          `/chat/${courseId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
