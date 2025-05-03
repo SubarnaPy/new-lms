@@ -263,98 +263,95 @@ export default function LiveClassComponent({ roomId, userRole }) {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900">
-  {/* Top Controls */}
-  <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
-    <div className="flex items-center gap-2">
-      <AcademicCapIcon className="w-6 h-6 text-blue-500" />
-      <span className="text-xl font-bold text-gray-100">Virtual Classroom</span>
-      <div className="px-2 py-1 ml-4 text-sm text-gray-300 bg-gray-700 rounded-md">
-        {roomId}
+    {/* Top Controls */}
+    <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center gap-2">
+        <AcademicCapIcon className="w-6 h-6 text-blue-500" />
+        <span className="text-xl font-bold text-gray-100">{roomId}</span>
+        <div className="px-2 py-1 ml-4 text-sm text-gray-300 bg-gray-700 rounded-md">
+          {roomId}
+        </div>
+      </div>
+      
+      <div className="flex gap-3">
+        <ControlButton
+          icon={videoEnabled ? VideoCameraIcon : VideoCameraSlashIcon}
+          onClick={toggleVideo}
+          active={videoEnabled}
+          label={videoEnabled ? "Video On" : "Video Off"}
+        />
+        <ControlButton
+          icon={audioEnabled ? MicrophoneIcon : SpeakerXMarkIcon}
+          onClick={toggleAudio}
+          active={audioEnabled}
+          label={audioEnabled ? "Mic On" : "Mic Off"}
+        />
+        <ControlButton
+          icon={screenSharing ? StopCircleIcon : PresentationChartBarIcon}
+          onClick={shareScreen}
+          active={screenSharing}
+          label={screenSharing ? "Stop Sharing" : "Share Screen"}
+          variant={screenSharing ? "red" : "default"}
+        />
+        <button
+          onClick={endCall}
+          className="flex items-center gap-2 px-4 py-2 text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
+        >
+          <PhoneXMarkIcon className="w-5 h-5" />
+          <span>Leave</span>
+        </button>
       </div>
     </div>
-    
-    <div className="flex gap-3">
-      <ControlButton
-        icon={videoEnabled ? VideoCameraIcon : VideoCameraSlashIcon}
-        onClick={toggleVideo}
-        active={videoEnabled}
-        label={videoEnabled ? "Video On" : "Video Off"}
-      />
-      <ControlButton
-        icon={audioEnabled ? MicrophoneIcon : SpeakerXMarkIcon}
-        onClick={toggleAudio}
-        active={audioEnabled}
-        label={audioEnabled ? "Mic On" : "Mic Off"}
-      />
-      <ControlButton
-        icon={screenSharing ? StopCircleIcon : PresentationChartBarIcon}
-        onClick={shareScreen}
-        active={screenSharing}
-        label={screenSharing ? "Stop Sharing" : "Share Screen"}
-        variant={screenSharing ? "red" : "default"}
-      />
-      <button
-        onClick={endCall}
-        className="flex items-center gap-2 px-4 py-2 text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
-      >
-        <PhoneXMarkIcon className="w-5 h-5" />
-        <span>Leave</span>
-      </button>
-    </div>
-  </div>
 
-  {/* Main Content */}
-  <div className="flex flex-1 overflow-hidden">
-    {/* Participants Column (Instructor Only) */}
-    {userRole === 'INSTRUCTOR' && (
-      <div className="flex flex-col bg-gray-800 border-r border-gray-700 w-80">
-        <div className="p-4 border-b border-gray-700">
-          <h3 className="flex items-center gap-2 font-semibold text-gray-300">
-            <UserGroupIcon className="w-5 h-5" />
-            Participants ({Object.keys(peers).length + 1})
-          </h3>
-        </div>
-        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-          {/* Self Preview */}
-          <div className="relative group">
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full bg-gray-900 rounded-lg aspect-video"
-            />
-            <div className="absolute px-2 py-1 text-sm text-gray-300 rounded-md bottom-2 left-2 bg-gray-900/80">
-              You (Instructor)
-            </div>
+    {/* Main Content */}
+    <div className="flex flex-1 overflow-hidden">
+      {/* Participants Column (Instructor Only) */}
+      {userRole === 'INSTRUCTOR' && (
+        <div className="flex flex-col bg-gray-800 border-r border-gray-700 w-80">
+          <div className="p-4 border-b border-gray-700">
+            <h3 className="flex items-center gap-2 font-semibold text-gray-300">
+              <UserGroupIcon className="w-5 h-5" />
+              Participants ({Object.keys(peers).length + 1})
+            </h3>
           </div>
-
-          {/* Student List */}
-          {Object.entries(peers).map(([id, { stream, role }]) => (
-            role === 'STUDENT' && (
-              <div key={id} className="relative group">
-                <video 
-                  ref={e => e && (e.srcObject = stream)}
-                  autoPlay 
-                  playsInline 
-                  className="w-full bg-gray-900 rounded-lg aspect-video"
-                />
-                <div className="absolute px-2 py-1 text-sm text-gray-300 rounded-md bottom-2 left-2 bg-gray-900/80">
-                  Student {id.slice(-4)}
-                </div>
+          <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+            <div className="relative group">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full bg-gray-900 rounded-lg aspect-video"
+              />
+              <div className="absolute px-2 py-1 text-sm text-gray-300 rounded-md bottom-2 left-2 bg-gray-900/80">
+                You (Instructor)
               </div>
-            )
-          ))}
-        </div>
-      </div>
-    )}
+            </div>
 
-    {/* Main Stage */}
-    <div className="flex flex-col flex-1 bg-gray-900">
-      {/* Instructor View for Students */}
-      {userRole === 'STUDENT' && (
-        <div className="flex flex-col flex-1 p-4">
-          <div className="relative flex-1 overflow-hidden bg-gray-800 rounded-xl">
+            {Object.entries(peers).map(([id, { stream, role }]) => (
+              role === 'STUDENT' && (
+                <div key={id} className="relative group">
+                  <video 
+                    ref={e => e && (e.srcObject = stream)}
+                    autoPlay 
+                    playsInline 
+                    className="w-full bg-gray-900 rounded-lg aspect-video"
+                  />
+                  <div className="absolute px-2 py-1 text-sm text-gray-300 rounded-md bottom-2 left-2 bg-gray-900/80">
+                    Student {id.slice(-4)}
+                  </div>
+                </div>
+              )
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Main Stage */}
+      <div className="flex flex-col flex-1 bg-gray-900">
+        {userRole === 'STUDENT' ? (
+          // Student View - Fullscreen Instructor Video
+          <div className="relative flex-1 bg-gray-800">
             {Object.entries(peers).map(([id, { stream, role }]) => (
               role === 'INSTRUCTOR' && (
                 <video
@@ -367,92 +364,92 @@ export default function LiveClassComponent({ roomId, userRole }) {
               )
             ))}
             <div className="absolute px-3 py-1 text-gray-300 rounded-lg bottom-4 left-4 bg-gray-900/80">
-            {/* {courseName} */}
-              Live - 
+              Live -
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          // Instructor View - Whiteboard
+          <div className="flex flex-col flex-1">
+            <div className="flex-1 p-4 bg-gray-800">
+              <Whiteboard 
+                roomId={roomId} 
+                editable={true}
+                className="h-full bg-white rounded-lg"
+              />
+            </div>
+            <div className="p-4 bg-gray-800 border-t border-gray-700">
+              <h3 className="flex items-center gap-2 font-semibold text-gray-300">
+                <PaintBrushIcon className="w-5 h-5" />
+                Collaborative Whiteboard
+              </h3>
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* Whiteboard Section */}
-      <div className="h-[400px] border-t border-gray-800">
-        <div className="p-4 bg-gray-800">
-          <h3 className="flex items-center gap-2 mb-2 font-semibold text-gray-300">
-            <PaintBrushIcon className="w-5 h-5" />
-            Collaborative Whiteboard
+      {/* Chat Sidebar */}
+      <div className={`w-96 bg-gray-800 border-l border-gray-700 flex flex-col ${isChatOpen ? 'block' : 'hidden'}`}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          <h3 className="flex items-center gap-2 font-semibold text-gray-300">
+            <ChatBubbleLeftRightIcon className="w-5 h-5" />
+            Class Chat
           </h3>
-        </div>
-        <Whiteboard 
-          roomId={roomId} 
-          editable={userRole === 'INSTRUCTOR'}
-          className="bg-white h-[calc(100%-56px)]"
-        />
-      </div>
-    </div>
-
-    {/* Chat Sidebar */}
-    <div className={`w-96 bg-gray-800 border-l border-gray-700 flex flex-col ${isChatOpen ? 'block' : 'hidden'}`}>
-      <div className="flex items-center justify-between p-4 border-b border-gray-700">
-        <h3 className="flex items-center gap-2 font-semibold text-gray-300">
-          <ChatBubbleLeftRightIcon className="w-5 h-5" />
-          Class Chat
-        </h3>
-        <button
-          onClick={() => setIsChatOpen(false)}
-          className="text-gray-400 hover:text-gray-200"
-        >
-          <XMarkIcon className="w-6 h-6" />
-        </button>
-      </div>
-
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.sender === 'Me' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-lg p-3 ${m.sender === 'Me' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
-              <div className="mb-1 text-sm font-medium">
-                {m.sender === 'Me' ? 'You' : m.sender}
-              </div>
-              <div className="text-sm break-words">{m.text}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex gap-2">
-          <input
-            value={chatInput}
-            onChange={e => setChatInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && sendMessage()}
-            placeholder="Type a message..."
-            className="flex-1 px-4 py-2 text-gray-300 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          />
           <button
-            onClick={sendMessage}
-            className="px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+            onClick={() => setIsChatOpen(false)}
+            className="text-gray-400 hover:text-gray-200"
           >
-            Send
+            <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
+
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.sender === 'Me' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-lg p-3 ${m.sender === 'Me' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                <div className="mb-1 text-sm font-medium">
+                  {m.sender === 'Me' ? 'You' : m.sender}
+                </div>
+                <div className="text-sm break-words">{m.text}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-gray-700">
+          <div className="flex gap-2">
+            <input
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && sendMessage()}
+              placeholder="Type a message..."
+              className="flex-1 px-4 py-2 text-gray-300 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+            <button
+              onClick={sendMessage}
+              className="px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+            >
+              Send
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  {/* Chat Toggle */}
-  {!isChatOpen && (
-    <button
-      onClick={() => setIsChatOpen(true)}
-      className="fixed p-3 text-white transition-colors bg-blue-600 rounded-full shadow-lg bottom-4 right-4 hover:bg-blue-700 group"
-    >
-      <ChatBubbleLeftRightIcon className="w-6 h-6" />
-      {/* {unreadMessages > 0 && (
-        <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-red-500 rounded-full -top-2 -right-2">
-          {unreadMessages}
-        </span>
-      )} */}
-    </button>
-  )}
-</div>
+    {/* Chat Toggle */}
+    {!isChatOpen && (
+      <button
+        onClick={() => setIsChatOpen(true)}
+        className="fixed p-3 text-white transition-colors bg-blue-600 rounded-full shadow-lg bottom-4 right-4 hover:bg-blue-700 group"
+      >
+        <ChatBubbleLeftRightIcon className="w-6 h-6" />
+        {/* {unreadMessages > 0 && (
+          <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-red-500 rounded-full -top-2 -right-2">
+            {unreadMessages}
+          </span>
+        )} */}
+      </button>
+    )}
+  </div>
 
 // Reusable ControlButton component
 
