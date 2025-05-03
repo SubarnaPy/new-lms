@@ -138,8 +138,8 @@ const ChatComponent = ({ courseId, userId }) => {
           formData.append("file", audioBlob, "audio.wav");
         }
 
-        const uploadResponse = await axios.post(
-          "http://localhost:5001/api/v1/upload",
+        const uploadResponse = await axiosInstance.post(
+          "upload",
           formData,
           {
             headers: {
