@@ -76,6 +76,7 @@ function HomePage() {
     <HomeLayout>
       {/* Hero Section */}
       <HeroSection1 />
+      <HeroSection2 />
 
       {/* Popular Courses Section */}
       <TopCourses />
