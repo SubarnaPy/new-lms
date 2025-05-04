@@ -228,24 +228,30 @@ const CourseDetails = () => {
 
           {/* Mobile Instructor Card */}
           {/* Mobile Purchase Buttons - Fixed at bottom */}
-<div className={`fixed bottom-0 left-0 right-0 z-50 lg:hidden p-4 border-t backdrop-blur-sm ${
-  isDarkMode ? "bg-[#020817]/90 border-gray-800" : "bg-white/90 border-gray-200"
-}`}>
-  <div className="flex gap-3 max-w-[1200px] mx-auto">
-    <button
-      onClick={handleAddToCart}
-      className="flex-1 px-4 py-3 text-sm font-medium text-white transition-colors bg-purple-600 rounded-lg hover:bg-purple-700"
-    >
-      Add to Cart
-    </button>
-    <button
-      onClick={handleBuyCourse}
-      className="flex-1 px-4 py-3 text-sm font-medium text-white transition-colors bg-green-600 rounded-lg hover:bg-green-700"
-    >
-      Buy Now
-    </button>
-  </div>
-</div>
+          <div
+        className={`
+          fixed inset-x-0 bottom-0 z-50 p-4 border-t 
+          ${isDarkMode ? "bg-[#020817]/90 border-gray-800" : "bg-white/90 border-gray-200"}
+          block lg:hidden
+        `}
+      >
+        <div className="flex gap-3 max-w-[1200px] mx-auto">
+          <button
+            onClick={handleAddToCart}
+            className="flex-1 px-4 py-3 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <FaCartPlus className="inline mr-2" />
+            Add to Cart
+          </button>
+          <button
+            onClick={handleBuyCourse}
+            className="flex-1 px-4 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <RiMoneyDollarCircleLine className="inline mr-2" />
+            Buy Now
+          </button>
+        </div>
+      </div>
         </div>
 
         {/* Right Section (1/3 width) */}
