@@ -230,7 +230,7 @@ const CourseDetails = () => {
           {/* Mobile Purchase Buttons - Fixed at bottom */}
           <div
         className={`
-          fixed inset-x-0 bottom-0 z-50 p-4 border-t 
+          fixed inset-x-0 bottom-0 z-[100] p-4 border-t 
           ${isDarkMode ? "bg-[#020817]/90 border-gray-800" : "bg-white/90 border-gray-200"}
           block lg:hidden
         `}
