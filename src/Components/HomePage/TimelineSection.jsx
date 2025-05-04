@@ -6,12 +6,31 @@ import timelineImage from "../../Assetss/Images/TimelineImage.png";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useContext } from "react";
 import { DarkModeContext } from "../../Layouts/DarkModeContext";
-// import { DarkModeContext } from "../../context/DarkModeContext";
-// import { motion, useScroll, useTransform } from "framer-motion";
-// import { useRef, useContext } from "react";
 import clsx from "clsx";
-import { timeline } from "@material-tailwind/react";
-// import { DarkModeContext } from "../../Layouts/DarkModeContext";
+// import { DarkModeContext } from "../../context/DarkModeContext";
+
+const timeline = [
+  {
+    Logo: Logo1,
+    heading: "Leadership",
+    Description: "Fully committed to the success company",
+  },
+  {
+    Logo: Logo2,
+    heading: "Vision",
+    Description: "Creating a vision for the future",
+  },
+  {
+    Logo: Logo3,
+    heading: "Integrity",
+    Description: "Maintaining high ethical standards",
+  },
+  {
+    Logo: Logo4,
+    heading: "Innovation",
+    Description: "Embracing creativity and change",
+  },
+];
 
 const TimelineSection = () => {
   const ref = useRef(null);
