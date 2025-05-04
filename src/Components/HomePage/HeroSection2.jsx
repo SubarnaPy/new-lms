@@ -14,7 +14,7 @@ const HeroSection2 = () => {
       "relative w-full overflow-hidden",
       isDarkMode ? "bg-[#020817]" : "bg-white"
     )}>
-      {/* Statistics Section */}
+      {/* Statisti Section */}
       <motion.div 
         initial={{ y: -50, opacity: 0 }}
         whileInView={{ y: 0, opacity: 1 }}
