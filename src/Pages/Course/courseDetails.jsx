@@ -227,25 +227,25 @@ const CourseDetails = () => {
           </div>
 
           {/* Mobile Instructor Card */}
-          <div className={`p-4 rounded-lg shadow-sm lg:hidden ${
-            isDarkMode ? "bg-gray-800" : "bg-white"
-          }`}>
-            <div className="flex items-center gap-3">
-              <img
-                src={instructor.avatar?.secure_url}
-                alt={instructor.fullName}
-                className="w-10 h-10 rounded-full"
-              />
-              <div>
-                <h3 className={`font-semibold ${
-                  isDarkMode ? "text-white" : "text-gray-900"
-                }`}>{instructor.fullName}</h3>
-                <p className={`text-sm ${
-                  isDarkMode ? "text-gray-300" : "text-gray-600"
-                }`}>Instructor</p>
-              </div>
-            </div>
-          </div>
+          {/* Mobile Purchase Buttons - Fixed at bottom */}
+<div className={`fixed bottom-0 left-0 right-0 z-50 lg:hidden p-4 border-t backdrop-blur-sm ${
+  isDarkMode ? "bg-[#020817]/90 border-gray-800" : "bg-white/90 border-gray-200"
+}`}>
+  <div className="flex gap-3 max-w-[1200px] mx-auto">
+    <button
+      onClick={handleAddToCart}
+      className="flex-1 px-4 py-3 text-sm font-medium text-white transition-colors bg-purple-600 rounded-lg hover:bg-purple-700"
+    >
+      Add to Cart
+    </button>
+    <button
+      onClick={handleBuyCourse}
+      className="flex-1 px-4 py-3 text-sm font-medium text-white transition-colors bg-green-600 rounded-lg hover:bg-green-700"
+    >
+      Buy Now
+    </button>
+  </div>
+</div>
         </div>
 
         {/* Right Section (1/3 width) */}
