@@ -187,45 +187,103 @@ function HomePage() {
 </div>
 
       {/* Skills Section */}
-      <div className={`flex flex-col items-center justify-between max-w-6xl gap-12 mx-auto mt-20 ${
-        isDarkMode ? "bg-gray-900" : "bg-[#f9f9f9]"
-      }`}>
-        <div className="flex flex-col gap-8 mb-12 md:flex-row">
+      <div className={clsx(
+      "relative flex flex-col items-center justify-between gap-16",
+      "max-w-7xl mx-auto px-4 py-24 md:py-32",
+      "overflow-hidden"
+    )}>
+      {/* Animated background elements */}
+      {isDarkMode && (
+        <div className="absolute inset-0 -z-10 opacity-20">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[100px]" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px]" />
+        </div>
+      )}
+
+      <div className="flex flex-col gap-12 w-full">
+        <div className="flex flex-col gap-12 md:flex-row md:items-center">
           <motion.div
-            initial={{ y: 100, opacity: 0 }}
+            initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="w-full text-3xl font-semibold md:text-4xl lg:text-5xl md:w-1/2"
+            transition={{ duration: 0.6 }}
+            className="flex-1 space-y-6"
           >
-            <span className={isDarkMode ? "text-white" : "text-gray-900"}>
+            <h1 className={clsx(
+              "text-4xl md:text-5xl lg:text-6xl font-bold leading-tight",
+              "bg-gradient-to-r bg-clip-text text-transparent",
+              isDarkMode 
+                ? "from-blue-400 to-purple-400" 
+                : "from-blue-600 to-purple-600",
+              "relative pb-4"
+            )}>
               Get the Skills you need for a
-              <HighlightText text={"Job that is in demand"} />
-            </span>
+              <span className="block mt-4">
+                <HighlightText text="Job that is in demand" />
+              </span>
+              {/* Animated underline */}
+              <motion.div
+                className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-400 to-purple-400"
+                initial={{ width: 0 }}
+                whileInView={{ width: "100%" }}
+                transition={{ duration: 1, delay: 0.5 }}
+              />
+            </h1>
           </motion.div>
+
           <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="flex flex-col gap-6 md:w-1/2"
+            initial={{ x: 50, opacity: 0 }}
+            whileInView={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="flex-1 space-y-8"
           >
-            <p className={`text-lg ${isDarkMode ? "text-gray-300" : "text-gray-600"} md:text-xl`}>
+            <p className={clsx(
+              "text-lg md:text-xl leading-relaxed",
+              isDarkMode ? "text-gray-300" : "text-gray-600"
+            )}>
               The modern StudyNotion dictates its own terms. Today, to be a competitive specialist requires more than professional skills.
             </p>
+
             <Link to="/login">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-8 py-3 font-semibold text-white transition-transform transform rounded-lg shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className={clsx(
+                  "relative overflow-hidden px-8 py-4 font-semibold",
+                  "rounded-xl flex items-center gap-3",
+                  "transform transition-all duration-300",
+                  "shadow-lg hover:shadow-xl",
+                  isDarkMode
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-gray-100"
+                    : "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
+                )}
               >
-                Learn more
+                <span>Learn more</span>
+                <motion.div
+                  animate={{ rotate: [0, 90, 180, 270, 360] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <FaArrowRight className="text-lg" />
+                </motion.div>
+                {/* Button hover effect */}
+                <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-20 transition-opacity" />
               </motion.button>
             </Link>
           </motion.div>
         </div>
-        <TimelineSection />
-        <LearningLanguageSection />
-        <InstructorSection />
+
+        {/* Sections with animated entrance */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ staggerChildren: 0.2 }}
+          className="space-y-20"
+        >
+          <TimelineSection />
+          <LearningLanguageSection />
+          <InstructorSection />
+        </motion.div>
       </div>
+    </div>
 
       {/* Review Slider */}
       <div className={`py-20 ${
