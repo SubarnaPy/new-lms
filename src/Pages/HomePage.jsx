@@ -286,20 +286,75 @@ function HomePage() {
     </div>
 
       {/* Review Slider */}
-      <div className={`py-20 ${
-        isDarkMode ? "bg-gradient-to-r from-gray-900 to-gray-900" : "bg-gradient-to-r from-purple-50 to-indigo-50"
-      }`}>
-        <div className="px-4 mx-auto ">
-          <h2 className={`mb-12 text-4xl font-bold text-center ${
-            isDarkMode ? "text-white" : "text-gray-900"
-          }`}>
-            What Our <HighlightText text={"Students Say"} />
-          </h2>
-          <ReviewSlider />
-          
-        </div>
-        
+      <div className={clsx(
+  "relative py-20 overflow-hidden",
+  isDarkMode 
+    ? "bg-[#020817] border-t border-gray-800" 
+    : "bg-gradient-to-r from-purple-50 to-indigo-50"
+)}>
+  {/* Animated background elements */}
+  {isDarkMode && (
+    <div className="absolute inset-0 opacity-20">
+      <div className="absolute top-1/4 left-[20%] w-96 h-96 bg-purple-500/10 rounded-full blur-[100px]" />
+      <div className="absolute bottom-1/4 right-[20%] w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px]" />
+    </div>
+  )}
+
+  <div className="max-w-7xl px-4 mx-auto relative z-10">
+    <motion.h2
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className={clsx(
+        "mb-16 text-4xl md:text-5xl font-bold text-center",
+        isDarkMode ? "text-gray-100" : "text-gray-900"
+      )}
+    >
+      What Our <HighlightText text={"Students Say"} />
+    </motion.h2>
+
+    <motion.div
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      transition={{ staggerChildren: 0.2 }}
+    >
+      <ReviewSlider 
+        cardClassName={clsx(
+          "backdrop-blur-sm border",
+          isDarkMode 
+            ? "bg-gray-800/30 border-gray-700 hover:border-purple-500/50" 
+            : "bg-white border-gray-200 hover:border-purple-300"
+        )}
+        textClassName={isDarkMode ? "text-gray-300" : "text-gray-600"}
+      />
+    </motion.div>
+
+    {/* Floating particles */}
+    {isDarkMode && (
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-purple-400 rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`
+            }}
+            animate={{
+              y: [0, -40, 0],
+              opacity: [0, 0.8, 0]
+            }}
+            transition={{
+              duration: Math.random() * 4 + 3,
+              repeat: Infinity,
+              delay: Math.random() * 2
+            }}
+          />
+        ))}
       </div>
+    )}
+  </div>
+</div>
     </HomeLayout>
   );
 }

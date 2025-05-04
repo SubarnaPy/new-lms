@@ -7,29 +7,11 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useContext } from "react";
 import { DarkModeContext } from "../../Layouts/DarkModeContext";
 // import { DarkModeContext } from "../../context/DarkModeContext";
-
-const timeline = [
-  {
-    Logo: Logo1,
-    heading: "Leadership",
-    Description: "Fully committed to the success company",
-  },
-  {
-    Logo: Logo2,
-    heading: "Vision",
-    Description: "Creating a vision for the future",
-  },
-  {
-    Logo: Logo3,
-    heading: "Integrity",
-    Description: "Maintaining high ethical standards",
-  },
-  {
-    Logo: Logo4,
-    heading: "Innovation",
-    Description: "Embracing creativity and change",
-  },
-];
+// import { motion, useScroll, useTransform } from "framer-motion";
+// import { useRef, useContext } from "react";
+import clsx from "clsx";
+import { timeline } from "@material-tailwind/react";
+// import { DarkModeContext } from "../../Layouts/DarkModeContext";
 
 const TimelineSection = () => {
   const ref = useRef(null);
@@ -43,44 +25,55 @@ const TimelineSection = () => {
 
   return (
     <div
-      className={`relative overflow-hidden py-20 ${
-        isDarkMode ? "bg-gray-900" : "bg-[#f9f9f9]"
-      }`}
+      className={clsx(
+        "relative overflow-hidden py-20",
+        isDarkMode ? "bg-[#020817]" : "bg-[#f9f9f9]"
+      )}
       ref={ref}
     >
-      <div className="container flex flex-col items-center gap-10 px-5 mx-auto lg:flex-row">
-        {/* Timeline Section */}
-        <div className="lg:w-[45%] flex flex-col gap-6">
+      <div className="container flex flex-col items-center gap-14 px-5 mx-auto lg:flex-row">
+        {/* Timeline Items */}
+        <div className="lg:w-[45%] flex flex-col gap-8">
           {timeline.map((element, index) => (
             <motion.div
               key={index}
               style={{ y }}
-              className={`flex flex-row gap-4 items-start p-6 ${
-                isDarkMode ? "bg-gray-800" : "bg-white"
-              } rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-2 border ${
-                isDarkMode ? "border-gray-700" : "border-gray-100"
-              }`}
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 + 0.2 }}
+              className={clsx(
+                "flex gap-6 items-start p-6 rounded-2xl",
+                "shadow-xl hover:shadow-2xl transition-all duration-300",
+                "border backdrop-blur-sm",
+                isDarkMode
+                  ? "bg-gray-800/30 border-gray-700 hover:border-purple-500/50"
+                  : "bg-white border-gray-200 hover:border-purple-300"
+              )}
             >
-              <div
-                className={`w-[50px] h-[50px] ${
-                  isDarkMode ? "bg-gray-700" : "bg-white"
-                } flex items-center justify-center shadow-lg rounded-full`}
-              >
-                <img src={element.Logo} alt={`Logo ${index + 1}`} />
+              <div className={clsx(
+                "min-w-[60px] h-[60px] flex items-center justify-center",
+                "rounded-2xl shadow-lg",
+                isDarkMode 
+                  ? "bg-purple-900/30 border border-purple-500/20"
+                  : "bg-purple-100"
+              )}>
+                <img 
+                  src={element.Logo} 
+                  alt={`Logo ${index + 1}`} 
+                  className="w-8 h-8 filter brightness-125"
+                />
               </div>
-              <div>
-                <h2
-                  className={`font-semibold text-lg ${
-                    isDarkMode ? "text-white" : "text-gray-800"
-                  }`}
-                >
+              <div className="space-y-2">
+                <h2 className={clsx(
+                  "text-xl font-bold",
+                  isDarkMode ? "text-purple-400" : "text-purple-600"
+                )}>
                   {element.heading}
                 </h2>
-                <p
-                  className={`text-sm ${
-                    isDarkMode ? "text-gray-300" : "text-gray-600"
-                  }`}
-                >
+                <p className={clsx(
+                  "text-base leading-relaxed",
+                  isDarkMode ? "text-gray-300" : "text-gray-600"
+                )}>
                   {element.Description}
                 </p>
               </div>
@@ -88,39 +81,91 @@ const TimelineSection = () => {
           ))}
         </div>
 
-        {/* Timeline Image Section */}
+        {/* Image Section */}
         <div className="relative w-full lg:w-[50%] flex justify-center items-center">
-          <motion.div style={{ y }} className="relative">
+          <motion.div 
+            style={{ y }}
+            className="relative overflow-hidden rounded-2xl shadow-2xl"
+          >
             <img
               src={timelineImage}
               alt="Timeline Illustration"
-              className="object-cover rounded-md shadow-lg"
+              className="object-cover w-full h-full"
             />
-            <div
-              className={`absolute inset-0 ${
-                isDarkMode
-                  ? "bg-gradient-to-r from-[#0070f3] to-[#00ffab] opacity-20"
-                  : "bg-gradient-to-r from-[#0070f3] to-[#00ffab] opacity-10"
-              } rounded-md`}
-            ></div>
+            <div className={clsx(
+              "absolute inset-0 mix-blend-overlay",
+              isDarkMode 
+                ? "bg-gradient-to-r from-purple-500/20 to-blue-500/20"
+                : "bg-gradient-to-r from-purple-100/40 to-blue-100/40"
+            )} />
           </motion.div>
 
-          {/* Floating Card */}
+          {/* Floating Stats Card */}
           <motion.div
             style={{ y }}
-            className={`absolute bg-gradient-to-r from-[#0070f3] to-[#00ffab] text-white uppercase py-4 px-5 md:px-10 rounded-lg flex flex-row items-center gap-10 shadow-lg transform translate-x-[-50%] translate-y-[-50%] left-[50%] top-[50%]`}
+            animate={{
+              y: [0, -15, 0],
+              rotate: [0, 2, -2, 0]
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className={clsx(
+              "absolute bg-gradient-to-r from-purple-600 to-blue-600",
+              "text-white uppercase py-5 px-8 rounded-2xl",
+              "flex gap-8 items-center shadow-2xl",
+              "backdrop-blur-lg border",
+              isDarkMode 
+                ? "border-purple-500/30 bg-purple-600/80" 
+                : "border-white/20"
+            )}
           >
-            <div className="flex flex-row items-center gap-3 pr-5 border-r border-white">
-              <p className="text-3xl font-bold">10</p>
-              <p className="text-sm">Years of Experience</p>
+            <div className="pr-6 border-r border-white/30">
+              <p className="text-3xl font-black">10</p>
+              <p className="text-sm font-medium">Years Experience</p>
             </div>
-            <div className="flex items-center gap-3 pl-5">
-              <p className="text-3xl font-bold">250</p>
-              <p className="text-sm">Type of Courses</p>
+            <div>
+              <p className="text-3xl font-black">250+</p>
+              <p className="text-sm font-medium">Courses</p>
             </div>
           </motion.div>
+
+          {/* Decorative Elements */}
+          {isDarkMode && (
+            <>
+              <div className="absolute top-0 left-0 w-48 h-48 bg-purple-500/20 rounded-full blur-[80px]" />
+              <div className="absolute bottom-0 right-0 w-48 h-48 bg-blue-500/20 rounded-full blur-[80px]" />
+            </>
+          )}
         </div>
       </div>
+
+      {/* Background Particles */}
+      {isDarkMode && (
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-purple-400 rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`
+              }}
+              animate={{
+                y: [0, -40, 0],
+                opacity: [0, 0.8, 0]
+              }}
+              transition={{
+                duration: Math.random() * 4 + 3,
+                repeat: Infinity,
+                delay: Math.random() * 2
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
