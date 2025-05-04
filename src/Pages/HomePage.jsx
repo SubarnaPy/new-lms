@@ -10,9 +10,10 @@ import ReviewSlider from "../Components/HomePage/ReviewSlider";
 import CourseCard from "../Components/Course/courseCard"; // Assuming you have a CourseCard component
 import { FaArrowRight, FaRocket, FaUsers, FaChartLine, FaStar } from "react-icons/fa";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import TopCourses from "../Components/Course/TopCourses";
 import { DarkModeContext } from "../Layouts/DarkModeContext";
+import clsx from "clsx";
 // import { DarkModeContext } from "../context/DarkModeContext"; // Import DarkModeContext
 
 function HomePage() {
@@ -82,32 +83,108 @@ function HomePage() {
       <TopCourses />
 
       {/* Moving Blocks Section */}
-      <div className={`py-20 ${isDarkMode ? "bg-gray-900" : "bg-[#f9f9f9]"}`}>
-        <div className="max-w-6xl px-4 mx-auto">
-          <h2 className={`mb-12 text-4xl font-bold text-center ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-            Why Choose <HighlightText text={"EDUCATION SIGHT"} />?
-          </h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            {movingBlocks.map((block, index) => (
-              <motion.div
-                key={index}
-                initial={{ y: 100, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.2 }}
-                className={`p-8 text-center transition-all duration-300 transform ${
-                  isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"
-                } border shadow-lg rounded-xl hover:shadow-xl hover:border-purple-200`}
-              >
-                <div className="flex justify-center mb-6">{block.icon}</div>
-                <h3 className={`mb-4 text-2xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                  {block.title}
-                </h3>
-                <p className={`${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>{block.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <div className={clsx(
+  "relative py-20 overflow-hidden",
+  isDarkMode ? "bg-[#020817]" : "bg-[#f9f9f9]"
+)}>
+  <div className="max-w-7xl px-4 mx-auto relative z-10">
+    <motion.h2 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className={clsx(
+        "mb-16 text-4xl md:text-5xl font-bold text-center",
+        isDarkMode ? "text-gray-100" : "text-gray-900"
+      )}
+    >
+      Why Choose <HighlightText text={"EDUCATION SIGHT"} />
+    </motion.h2>
+
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+      {movingBlocks.map((block, index) => (
+        <motion.div
+          key={index}
+          initial={{ scale: 0.8, opacity: 0 }}
+          whileInView={{ scale: 1, opacity: 1 }}
+          whileHover={{ 
+            y: -10,
+            boxShadow: isDarkMode 
+              ? "0 20px 40px -10px rgba(126, 34, 206, 0.3)" 
+              : "0 20px 40px -10px rgba(99, 102, 241, 0.2)"
+          }}
+          transition={{ 
+            duration: 0.4, 
+            delay: index * 0.1,
+            hover: { duration: 0.2 }
+          }}
+          className={clsx(
+            "group p-8 text-center border rounded-2xl",
+            "transform transition-all duration-300",
+            "relative overflow-hidden",
+            isDarkMode 
+              ? "bg-gray-800/30 border-gray-700 backdrop-blur-sm hover:border-purple-500/50" 
+              : "bg-white border-gray-200 hover:border-purple-300"
+          )}
+        >
+          {/* Hover effect layer */}
+          <div className={clsx(
+            "absolute inset-0 opacity-0 group-hover:opacity-100",
+            "transition-opacity duration-300",
+            isDarkMode 
+              ? "bg-gradient-to-br from-purple-500/10 to-transparent" 
+              : "bg-gradient-to-br from-purple-100/30 to-transparent"
+          )} />
+
+          {/* Animated icon */}
+          <motion.div 
+            className="flex justify-center mb-6"
+            whileHover={{ scale: 1.1 }}
+          >
+            {React.cloneElement(block.icon, {
+              className: clsx(
+                "w-16 h-16 p-4 rounded-2xl",
+                isDarkMode 
+                  ? "text-purple-400 bg-purple-900/30" 
+                  : "text-purple-600 bg-purple-100"
+              )
+            })}
+          </motion.div>
+
+          <h3 className={clsx(
+            "mb-4 text-2xl font-bold",
+            isDarkMode ? "text-gray-100" : "text-gray-900"
+          )}>
+            {block.title}
+          </h3>
+
+          <p className={clsx(
+            "text-lg leading-relaxed",
+            isDarkMode ? "text-gray-300" : "text-gray-600"
+          )}>
+            {block.description}
+          </p>
+
+          {/* Animated border */}
+          <div className={clsx(
+            "absolute inset-0 rounded-2xl pointer-events-none",
+            "group-hover:border-[3px] transition-all duration-300",
+            isDarkMode 
+              ? "border-purple-500/30" 
+              : "border-purple-300"
+          )} />
+        </motion.div>
+      ))}
+    </div>
+  </div>
+
+  {/* Background elements */}
+  {isDarkMode && (
+    <div className="absolute inset-0 z-0 opacity-10">
+      <div className="absolute top-0 left-[10%] w-64 h-64 bg-purple-500 rounded-full blur-[100px]" />
+      <div className="absolute bottom-0 right-[10%] w-64 h-64 bg-indigo-500 rounded-full blur-[100px]" />
+    </div>
+  )}
+</div>
 
       {/* Skills Section */}
       <div className={`flex flex-col items-center justify-between max-w-6xl gap-12 mx-auto mt-20 ${
