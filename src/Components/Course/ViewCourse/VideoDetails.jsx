@@ -17,12 +17,13 @@ const VideoDetails = () => {
   const playerRef = useRef();
   const { courseSectionData, courseEntireData } = useSelector((state) => state.viewCourse);
   const user = useSelector((state) => state.profile.data);
+  const completedLectures = user.courseProgress.find((item) => item.courseID === courseId)?.completedVideos;
+
   const [previewSource, setPreviewSource] = useState('');
   const [videoData, setVideoData] = useState([]);
   const [videoEnded, setVideoEnded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false); // State for chat modal
-  const completedLectures = user.courseProgress.find((item) => item.courseID === courseId)?.completedVideos;
 
   useEffect(() => {
     const setVideoSpecificDetails = () => {
@@ -102,26 +103,35 @@ const VideoDetails = () => {
   };
 
   return (
-    <div className="flex flex-col gap-5 text-black dark:text-white">
-      {!videoData ? (
-        <img src={previewSource} alt="Preview" className="object-cover w-full rounded-md" />
-      ) : (
-        <Player fluid={true} ref={playerRef} aspectRatio="16:9" playsInline onEnded={() => setVideoEnded(true)} src={videoData?.lecture?.secure_url}>
-          {videoEnded && (
-            <div
-              style={{
-                backgroundImage:
-                  'linear-gradient(to top, rgb(0, 0, 0), rgba(0,0,0,0.7), rgba(0,0,0,0.5), rgba(0,0,0,0.1)',
-              }}
-              className="absolute inset-0 z-30 flex flex-col gap-2 full place-content-center"
-            >
+    <div className="flex flex-col gap-6 text-gray-800 dark:text-gray-100" onClick={handleBackdropClick} >
+  {/* Video Player Section */}
+  <div className="relative w-full max-w-4xl mx-auto overflow-hidden bg-gray-900 shadow-2xl aspect-video rounded-xl">
+  {!videoData ? (
+    <img 
+      src={previewSource} 
+      alt="Preview" 
+      className="object-cover w-full h-full rounded-md" 
+    />
+  ) : (
+    <Player 
+      fluid={true} 
+      ref={playerRef} 
+      aspectRatio="16:9" 
+      playsInline 
+      onEnded={() => setVideoEnded(true)} 
+      src={videoData?.lecture?.secure_url}
+      className="bg-gray-900"
+    >
+        {videoEnded && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-4 p-6 text-center">
               {!completedLectures?.includes(subSectionId) && (
                 <Button
                   disabled={loading}
                   onClick={() => handleLectureCompletion(subSectionId, completedLectures)}
-                  className="px-2 mx-auto text-sm text-yellow-400 bg-slate-400 "
+                  className="px-6 py-3 text-white transition-all bg-gradient-to-r from-green-500 to-cyan-600 hover:shadow-lg rounded-xl"
                 >
-                  Mark As Completed
+                  🎯 Mark As Completed
                 </Button>
               )}
               <Button
@@ -132,59 +142,90 @@ const VideoDetails = () => {
                     setVideoEnded(false);
                   }
                 }}
-                className="px-2 mx-auto text-sm text-yellow-400 bg-slate-400"
+                className="px-6 py-3 text-white transition-all bg-gradient-to-r from-blue-500 to-purple-600 hover:shadow-lg rounded-xl"
               >
-                Rewatch
+                🔄 Rewatch Lecture
               </Button>
-              <div className="mt-4 flex min-w-[250px] justify-center gap-x-4 text-sm">
+              <div className="flex gap-4 mt-4">
                 {!isFirstVideo() && (
-                  <Button disabled={loading} onClick={goToPrevVideo} className="text-yellow-400 bg-slate-400">
-                    Prev
+                  <Button 
+                    disabled={loading} 
+                    onClick={goToPrevVideo}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-gray-700/80 hover:bg-gray-600/80 backdrop-blur-sm rounded-xl"
+                  >
+                    ← Previous
                   </Button>
                 )}
                 {!isLastVideo() && (
-                  <Button disabled={loading} onClick={goToNextVideo} className="text-yellow-400 bg-slate-100">
-                    Next
+                  <Button 
+                    disabled={loading} 
+                    onClick={goToNextVideo}
+                    className="flex items-center gap-2 px-4 py-2 text-white bg-gray-700/80 hover:bg-gray-600/80 backdrop-blur-sm rounded-xl"
+                  >
+                    Next →
                   </Button>
                 )}
               </div>
             </div>
-          )}
-        </Player>
-      )}
-      <div className="flex items-center justify-between">
-        <h1 className="mt-4 text-3xl font-semibold">{videoData?.title}</h1>
-        <Button
-          onClick={() => setIsChatModalOpen(true)}
-          className="text-black dark:text-white bg-slate-400 dark:bg-gray-600"
-        >
-          Open Chat
-        </Button>
-      </div>
-      <p className="pt-2 pb-6">{videoData?.description}</p>
-
-      {/* Chat Modal with Blurred Background */}
-      {isChatModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
-          onClick={handleBackdropClick} // Close modal when clicking outside
-        >
-          <div className="w-11/12 p-2 bg-[#f9f9f9] rounded-lg dark:bg-gray-800 md:w-1/2 lg:w-1/3">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-black dark:text-white">Course Chat</h2>
-              <button
-                onClick={() => setIsChatModalOpen(false)}
-                className="text-3xl text-black dark:text-white hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                &times;
-              </button>
-            </div>
-            {/* Render the ChatComponent inside the modal */}
-            <ChatComponent courseId={courseId} userId={user._id} />
           </div>
-        </div>
-      )}
+        )}
+      </Player>
+    )}
+  </div>
+
+  {/* Video Info Section */}
+  <div className="flex flex-col gap-4 p-6 bg-white shadow-md dark:bg-gray-800 rounded-xl">
+    <div className="flex items-center justify-between">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        {videoData?.title}
+      </h1>
+      <Button
+        onClick={() => setIsChatModalOpen(true)}
+        className="flex items-center gap-2 px-6 py-3 text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-lg rounded-xl"
+      >
+        💬 Open Discussion
+      </Button>
     </div>
+    
+    <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+      {videoData?.description}
+    </p>
+  </div>
+
+  {/* Chat Modal */}
+  {isChatModalOpen && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleBackdropClick}>
+      <div 
+        className="flex flex-col w-full h-full max-w-2xl overflow-hidden bg-white shadow-2xl dark:bg-gray-800 rounded-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            💬 Course Discussions
+          </h2>
+          <button
+            onClick={() => setIsChatModalOpen(false)}
+            className="p-2 text-gray-500 transition-colors rounded-full dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Chat Content */}
+        <div className="flex-1 p-4 overflow-y-auto"onClick={handleBackdropClick}>
+          <ChatComponent 
+            courseId={courseId} 
+            userId={user._id} 
+            className="mt-52"
+          />
+        </div>
+      </div>
+    </div>
+  )}
+</div>
   );
 };
 

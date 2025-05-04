@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { FaChevronLeft, FaBars, FaVideo, FaTasks, FaQuestionCircle } from 'react-icons/fa';
+import { FaChevronLeft, FaBars, FaVideo, FaTasks, FaQuestionCircle, FaCheckCircle } from 'react-icons/fa';
 import { MdOutlineKeyboardArrowDown } from 'react-icons/md';
 import { Button } from '@material-tailwind/react';
 import CourseReviewModal from './CourseReviewModal';
@@ -37,119 +37,139 @@ const VideoDetailsSidebar = ({ showSidebar, setShowSidebar }) => {
 
   return (
     <>
-      {/* Toggle Sidebar Button for Mobile */}
-      <div className="fixed z-50 top-16 right-10 md:hidden">
+      {/* Mobile Toggle Button */}
+      <div className="fixed z-50 top-24 right-6 md:hidden">
         <Button
-          className="p-2 text-black bg-blue-500 hover:bg-blue-600 transition duration-300"
+          variant="gradient"
+          className="p-3 rounded-full shadow-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 dark:from-gray-700 dark:to-gray-800 dark:hover:from-gray-600 dark:hover:to-gray-700"
           onClick={() => setShowSidebar(!showSidebar)}
         >
-          <FaBars className="text-xl" />
+          <FaBars className="text-xl text-white dark:text-gray-300" />
         </Button>
       </div>
 
-      {/* Sidebar */}
+      {/* Sidebar Container */}
       <div
-        className={`fixed h-screen z-40 top-0 left-0 bg-white dark:bg-gray-900 shadow-lg transform transition-transform duration-300 ease-in-out ${
+        className={`fixed h-screen z-40 top-0 left-0 bg-white dark:bg-gradient-to-b dark:from-gray-900 dark:to-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out ${
           showSidebar ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 md:static md:w-1/4 w-72`}
+        } md:translate-x-0 md:static md:w-80 w-72`}
       >
         <div className="flex flex-col h-full border-r dark:border-gray-700">
-          {/* Header */}
-          <div className="flex flex-col items-start justify-between gap-4 py-5 px-5 bg-blue-100 dark:bg-gray-800 border-b">
-            <div className="flex items-center justify-between w-full">
-              <div
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white hover:scale-95 transition duration-300 cursor-pointer"
+          {/* Header Section */}
+          <div className="p-6 border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-6">
+              <button
                 onClick={() => navigate('/dashboard/enrolled-courses')}
+                className="p-2 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <FaChevronLeft className="text-lg" />
-              </div>
+                <FaChevronLeft className="text-xl text-gray-600 dark:text-gray-300" />
+              </button>
               <Button
-                className="bg-green-500 hover:bg-green-600 text-white transition duration-300"
+                variant="gradient"
+                className="bg-gradient-to-r from-green-400 to-cyan-500 hover:shadow-lg dark:from-green-500 dark:to-cyan-600"
                 onClick={handleReview}
               >
-                Reviews
+                Leave Review
               </Button>
             </div>
-            <div className="text-left">
-              <p className="text-xl font-bold text-gray-700 dark:text-gray-300">My Courses</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {completedLectures?.length} of {totalNoOfLectures} Lectures Completed
-              </p>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Course Content</h2>
+              <div className="flex items-center space-x-2">
+                <div className="flex-1 h-2 bg-gray-200 rounded-full dark:bg-gray-700">
+                  <div 
+                    className="h-2 transition-all duration-500 rounded-full bg-gradient-to-r from-green-400 to-cyan-500 dark:from-green-500 dark:to-cyan-600"
+                    style={{ width: `${(completedLectures?.length / totalNoOfLectures) * 100}%` }}
+                  />
+                </div>
+                <span className="text-sm text-gray-500 dark:text-gray-300">
+                  {completedLectures?.length}/{totalNoOfLectures}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Sections */}
-          <div className="h-full gap-2 px-4 overflow-y-auto">
+          {/* Content Sections */}
+          <div className="flex-1 px-4 py-6 overflow-y-auto">
             {courseSectionData?.map((section, index) => (
-              <details key={index} className="group gap- transition-all duration-300">
-                <summary className="flex justify-between my-1 items-center cursor-pointer px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-300">
-                  <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">{section?.title}</div>
-                  <MdOutlineKeyboardArrowDown className="text-2xl transition-transform duration-300 group-open:rotate-180" />
+              <details 
+                key={index} 
+                className="mb-4 overflow-hidden transition-all duration-300 rounded-lg group bg-gray-50 dark:bg-gray-800"
+                open={activeStatus === section._id}
+              >
+                <summary className="flex items-center justify-between p-4 transition-colors cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-center w-8 h-8 bg-white rounded-lg shadow-sm dark:bg-gray-700">
+                      <span className="font-medium text-gray-600 dark:text-gray-300">{index + 1}</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-100">{section.title}</h3>
+                  </div>
+                  <MdOutlineKeyboardArrowDown className="text-2xl text-gray-400 transition-transform group-open:rotate-180" />
                 </summary>
 
-                {/* Videos */}
-                <div className="transition-all duration-300">
-                  {section?.subSection.map((subSection) => (
-                    <div key={subSection?._id} className="pl-4 border-l-4 border-blue-500">
-                      <div
-                        onClick={() => {
-                          setShowSidebar(false);
-                          navigate(`/courses/${courseId}/section/${section?._id}/sub-section/${subSection?._id}`);
-                        }}
-                        className={`flex items-center justify-between p-3 rounded-lg mt-2 cursor-pointer transition-colors ${
-                          subSection?._id === videoActive
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <FaVideo className="text-lg" />
-                          <p>{subSection?.title}</p>
-                        </div>
-                        <input
-                          readOnly
-                          checked={completedLectures?.includes(subSection?._id)}
-                          type="checkbox"
-                          className="accent-green-500"
-                        />
+                {/* Subsections */}
+                <div className="pb-4 pl-4 pr-2 space-y-2">
+                  {/* Videos */}
+                  {section.subSection.map((subSection) => (
+                    <div
+                      key={subSection._id}
+                      onClick={() => {
+                        setShowSidebar(false);
+                        navigate(`/courses/${courseId}/section/${section._id}/sub-section/${subSection._id}`);
+                      }}
+                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+                        subSection._id === videoActive 
+                          ? 'bg-blue-50 dark:bg-gradient-to-r dark:from-blue-500 dark:to-purple-500 shadow-md'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <FaVideo className={`text-sm ${
+                          subSection._id === videoActive 
+                            ? 'text-blue-500 dark:text-white' 
+                            : 'text-blue-400 dark:text-blue-300'
+                        }`} />
+                        <span className={`${
+                          subSection._id === videoActive 
+                            ? 'text-blue-600 dark:text-white' 
+                            : 'text-gray-600 dark:text-gray-300'
+                        }`}>
+                          {subSection.title}
+                        </span>
                       </div>
+                      {completedLectures?.includes(subSection._id) && (
+                        <FaCheckCircle className="text-green-500 dark:text-green-400" />
+                      )}
                     </div>
                   ))}
-                </div>
 
-                {/* Assignments */}
-                <div className="pl-4 border-l-4 border-yellow-500 transition-all duration-300">
-                  {section?.assignments?.map((assignment) => (
+                  {/* Assignments */}
+                  {section.assignments?.map((assignment) => (
                     <div
-                      key={assignment?._id}
+                      key={assignment._id}
                       onClick={() => navigate(`/courses/${courseId}/section/${section._id}/assignment/${assignment._id}`)}
-                      className="flex justify-between items-center p-3 mt-2 rounded-lg cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      className="flex items-center justify-between p-3 transition-colors rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      <div className="flex items-center gap-2">
-                        <FaTasks className="text-lg" />
-                        <p>{assignment.title}</p>
+                      <div className="flex items-center space-x-3">
+                        <FaTasks className="text-sm text-amber-500 dark:text-amber-400" />
+                        <span className="text-gray-600 dark:text-gray-300">{assignment.title}</span>
                       </div>
-                      <input
-                        readOnly
-                        checked={completedAssistants?.includes(assignment?._id)}
-                        type="checkbox"
-                        className="accent-yellow-500"
-                      />
+                      {completedAssistants?.includes(assignment._id) && (
+                        <FaCheckCircle className="text-green-500 dark:text-green-400" />
+                      )}
                     </div>
                   ))}
-                </div>
 
-                {/* Quizzes */}
-                <div className="pl-4 border-l-4 border-green-500 transition-all duration-300">
-                  {section?.quizzes?.map((quiz, i) => (
+                  {/* Quizzes */}
+                  {section.quizzes?.map((quiz) => (
                     <div
-                      key={i}
+                      key={quiz._id}
                       onClick={() => navigate(`/courses/${courseId}/section/${section._id}/quiz/${quiz._id}`)}
-                      className="flex justify-between items-center p-3 mt-2 rounded-lg cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      className="flex items-center justify-between p-3 transition-colors rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      <div className="flex items-center gap-2">
-                        <FaQuestionCircle className="text-lg" />
-                        <p>{quiz.title}</p>
+                      <div className="flex items-center space-x-3">
+                        <FaQuestionCircle className="text-sm text-emerald-500 dark:text-emerald-400" />
+                        <span className="text-gray-600 dark:text-gray-300">{quiz.title}</span>
                       </div>
                     </div>
                   ))}
