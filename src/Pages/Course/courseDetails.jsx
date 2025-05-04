@@ -7,7 +7,7 @@ import GetAvgRating from '../../utils/AvgRating';
 import ConfirmationModal from '../../Components/Modal/ConfirmationModal';
 import { formatDate } from '../../utils/formatDate';
 import ReactStars from 'react-rating-stars-component';
-import { IoIosInformationCircleOutline, IoIosStar } from 'react-icons/io';
+import { IoIosCheckmarkCircle, IoIosInformationCircleOutline, IoIosStar } from 'react-icons/io';
 import { BiVideo, BiTime } from 'react-icons/bi';
 import { MdOutlineArrowForwardIos, MdVerified } from 'react-icons/md';
 import CourseDetailsCard from '../../Components/Course/courseCart';
@@ -178,241 +178,267 @@ const CourseDetails = () => {
   } = courseData;
 
   return (
-    <>
-      <div className={`flex flex-col-reverse lg:flex-row gap-8 px-4 pt-8 md:pt-12 pb-4 md:pb-8 max-w-[1200px] mx-auto ${
-        isDarkMode ? "bg-gray-900 text-white" : "bg-[#f9f9f9] text-gray-900"
-      }`}>
-        {/* Left Section (2/3 width) */}
-        <div className="justify-center w-full lg:w-2/3">
-          <h1 className={`mb-4 text-2xl font-bold md:text-3xl lg:text-4xl ${
-            isDarkMode ? "text-white" : "text-gray-900"
-          }`}>{title}</h1>
-          
-          {/* Course Stats */}
-          <div className={`flex flex-wrap items-center gap-3 mb-4 text-sm md:text-base ${
-            isDarkMode ? "text-gray-300" : "text-gray-600"
-          }`}>
-            <div className="flex items-center gap-1">
-              <FaUsers className="text-lg text-purple-600" />
-              <span>{studentEnrolled.length} Students</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <ReactStars
-                count={5}
-                value={GetAvgRating(ratingAndReviews)}
-                size={20}
-                edit={false}
-                activeColor="#ffd700"
-              />
-              <span>({ratingAndReviews.length})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <BiTime className="text-lg" />
-              <span>{formatDate(createdAt)}</span>
-            </div>
-            
-            <div className={`p-4 mb-6 shadow-sm md:p-6 rounded-xl ${
-              isDarkMode ? "bg-gray-800" : "bg-white"
-            }`}>
-              <h2 className={`flex items-center gap-2 mb-4 text-xl font-bold md:text-2xl ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}>
-                <RiBookmarkLine className="text-purple-600" />
-                What You Will Learn
-              </h2>
-              <div className={`text-sm md:text-base ${
-                isDarkMode ? "text-gray-300" : "text-gray-700"
-              }`} dangerouslySetInnerHTML={{ __html: whatYouWillLearn }} />
-            </div>
-          </div>
-
-          {/* Mobile Instructor Card */}
-          <div className={`p-4 rounded-lg shadow-sm lg:hidden ${
-            isDarkMode ? "bg-gray-800" : "bg-white"
-          }`}>
-            <div className="flex items-center gap-3">
-              <img
-                src={instructor.avatar?.secure_url}
-                alt={instructor.fullName}
-                className="w-10 h-10 rounded-full"
-              />
-              <div>
-                <h3 className={`font-semibold ${
-                  isDarkMode ? "text-white" : "text-gray-900"
-                }`}>{instructor.fullName}</h3>
-                <p className={`text-sm ${
-                  isDarkMode ? "text-gray-300" : "text-gray-600"
-                }`}>Instructor</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Section (1/3 width) */}
-        <div className="flex flex-col w-full gap-8 lg:w-1/3">
-          {/* Mobile Thumbnail */}
-          <div className="lg:hidden">
-            <img
-              src={thumbnail?.secure_url}
-              alt={title}
-              className="object-cover w-full h-48 rounded-lg shadow-md md:h-56"
-            />
-          </div>
-
-          {/* Desktop Course Card */}
-          <div className="hidden lg:block">
-            <CourseDetailsCard
-              course={courseData}
-              setConfirmationModal={setConfirmationModal}
-              handleBuyCourse={handleBuyCourse}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content with tight spacing */}
-      <div className={`px-4 lg:px-8 max-w-[1200px] mx-auto ${
-        isDarkMode ? "bg-gray-900 text-white" : "bg-[#f9f9f9] text-gray-900"
-      }`}>
-        {/* Course Content Section */}
-        <div className={`p-4 mb-6 shadow-sm md:p-6 rounded-xl ${
-          isDarkMode ? "bg-gray-800" : "bg-white"
-        }`}>
-          <h2 className={`flex items-center gap-2 mb-4 text-xl font-bold md:text-2xl ${
-            isDarkMode ? "text-white" : "text-gray-900"
-          }`}>
-            <BiVideo className="text-purple-600" />
-            Course Content
-          </h2>
-
-          <div className="space-y-3">
-            {courseContent.map((section) => (
-              <div
-                key={section._id}
-                className={`overflow-hidden border rounded-lg ${
-                  isDarkMode ? "border-gray-700" : "border-gray-200"
-                }`}
-              >
-                <div
-                  onClick={() => handleActive(section._id)}
-                  className={`flex items-center justify-between p-3 cursor-pointer md:p-4 ${
-                    isDarkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-50 hover:bg-gray-100"
-                  }`}
-                >
+    <HomeLayout>
+      <div className={`min-h-screen bg-[#020817] text-gray-100`}>
+        {/* Course Hero Section */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#0f172a] to-[#1e293b]">
+          <div className="max-w-7xl mx-auto px-4 py-12 lg:py-16 lg:px-8">
+            <div className="flex flex-col lg:flex-row gap-12">
+              {/* Course Title and Details */}
+              <div className="flex-1 space-y-6">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-900/30 border border-indigo-400">
+                  <span className="text-sm font-medium text-indigo-300">Online Course</span>
+                </div>
+                <h1 className="text-4xl font-bold tracking-tight lg:text-5xl bg-gradient-to-r from-indigo-200 to-cyan-400 bg-clip-text text-transparent">
+                  {title}
+                </h1>
+                
+                {/* Course Metadata */}
+                <div className="flex flex-wrap gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <MdOutlineArrowForwardIos
-                      className={`transform transition-transform text-sm ${
-                        isActive.includes(section._id) ? "rotate-90" : ""
-                      } ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                    />
-                    <h3 className={`text-sm font-medium md:text-base ${
-                      isDarkMode ? "text-white" : "text-gray-900"
-                    }`}>{section.title}</h3>
+                    <FaUsers className="w-5 h-5 text-indigo-400" />
+                    <span>{studentEnrolled.length} enrolled</span>
                   </div>
-                  <span className={`text-xs md:text-sm ${
-                    isDarkMode ? "text-gray-300" : "text-gray-600"
-                  }`}>
-                    {section.subSection.length} Lectures
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <ReactStars
+                      count={5}
+                      value={GetAvgRating(ratingAndReviews)}
+                      size={20}
+                      edit={false}
+                      activeColor="#818cf8"
+                    />
+                    <span>({ratingAndReviews.length} reviews)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MdVerified className="w-5 h-5 text-emerald-400" />
+                    <span>Certificate included</span>
+                  </div>
                 </div>
 
-                {isActive.includes(section._id) && (
-                  <div className={`border-t ${
-                    isDarkMode ? "border-gray-700" : "border-gray-200"
-                  }`}>
-                   {section.subSection.map((subSection) => (
-  <div
-    key={subSection._id}
-    onClick={() => handleSubsectionClick(subSection)}
-    className={`flex items-center gap-2 p-2 md:p-3 cursor-pointer ${
-      isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"
-    }`}
-  >
-    <BiVideo className="text-purple-600 min-w-[16px]" />
-    <p className={`text-xs md:text-sm ${
-      isDarkMode ? "text-white" : "text-gray-900"
-    }`}>{subSection.title}</p>
-    {/* Add Free Badge if the video is free */}
-    {subSection?.lecture?.isFree && (
-      <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">
-        Free
-      </span>
-    )}
-  </div>
-))}
+                {/* Instructor Card */}
+                <div className="p-6 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={instructor.avatar?.secure_url}
+                      alt={instructor.fullName}
+                      className="w-12 h-12 rounded-full border-2 border-indigo-400"
+                    />
+                    <div>
+                      <h3 className="font-semibold text-indigo-200">Created by</h3>
+                      <p className="text-lg font-medium">{instructor.fullName}</p>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Instructor Section */}
-        <div className={`p-4 mb-6 shadow-sm md:p-6 rounded-xl ${
-          isDarkMode ? "bg-gray-800" : "bg-white"
-        }`}>
-          <h2 className={`flex items-center gap-2 mb-4 text-xl font-bold md:text-2xl ${
-            isDarkMode ? "text-white" : "text-gray-900"
-          }`}>
-            <GiTeacher className="text-purple-600" />
-            About the Instructor
-          </h2>
-          <div className="flex flex-col items-center gap-4 md:flex-row md:gap-6">
-            <img
-              src={instructor.avatar?.secure_url}
-              alt={instructor.fullName}
-              className="object-cover w-16 h-16 rounded-full md:w-24 md:h-24"
-            />
-            <div className="text-center md:text-left">
-              <h3 className={`text-lg font-semibold md:text-xl ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}>{instructor.fullName}</h3>
-              <p className={`mt-2 text-sm md:text-base ${
-                isDarkMode ? "text-gray-300" : "text-gray-700"
-              }`}>
-                {instructor.additionalDetails?.about}
-              </p>
+              {/* Course Thumbnail and CTAs */}
+              <div className="w-full lg:w-96 space-y-6">
+                <div className="relative overflow-hidden rounded-2xl border border-white/10">
+                  <img
+                    src={thumbnail?.secure_url}
+                    alt={title}
+                    className="w-full h-60 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  
+                  {/* Price Badge */}
+                  <div className="absolute bottom-4 left-4">
+                    <div className="px-4 py-2 rounded-full bg-indigo-600 backdrop-blur-sm flex items-center gap-2">
+                      <RiMoneyDollarCircleLine className="w-5 h-5" />
+                      <span className="font-bold">${price}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  {alreadyEnrolled ? (
+                    <button 
+                      onClick={() => navigate(`/course/${courseId}/lectures`)}
+                      className="w-full py-3.5 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors font-semibold flex items-center justify-center gap-2"
+                    >
+                      <FaPlayCircle className="w-5 h-5" />
+                      Continue Learning
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleBuyCourse}
+                        className="w-full py-3.5 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors font-semibold"
+                      >
+                        Enroll Now
+                      </button>
+                      <button
+                        onClick={handleAddToCart}
+                        className="w-full py-3.5 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/20 transition-colors font-semibold flex items-center justify-center gap-2"
+                      >
+                        <FaCartPlus className="w-5 h-5" />
+                        Add to Cart
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Reviews Section */}
-        <div className={`p-4 mb-6 shadow-sm md:p-6 rounded-xl ${
-          isDarkMode ? "bg-gray-800" : "bg-white"
-        }`}>
-          <h2 className={`flex items-center gap-2 mb-4 text-xl font-bold md:text-2xl ${
-            isDarkMode ? "text-white" : "text-gray-900"
-          }`}>
-            <IoIosStar className="text-purple-600" />
-            Student Reviews
-          </h2>
-          <CourseReviewCard reviews={ratingAndReviews} />
+        {/* Course Content Section */}
+        <div className="max-w-7xl mx-auto px-4 py-12 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-12">
+              {/* What You'll Learn */}
+              <section className="space-y-6">
+                <h2 className="text-2xl font-bold text-indigo-300">What You'll Learn</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {whatYouWillLearn.split('\n').map((point, index) => (
+                    <div key={index} className="flex items-start gap-3 p-4 bg-white/5 rounded-xl">
+                      <IoIosCheckmarkCircle className="flex-shrink-0 w-5 h-5 text-emerald-400 mt-1" />
+                      <p className="text-gray-300">{point}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Course Curriculum */}
+              <section className="space-y-6">
+                <h2 className="text-2xl font-bold text-indigo-300">Course Content</h2>
+                <div className="space-y-2">
+                  {courseContent.map((section) => (
+                    <div key={section._id} className="border border-white/10 rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => handleActive(section._id)}
+                        className="w-full px-5 py-4 bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <MdOutlineArrowForwardIos
+                            className={`transform transition-transform ${
+                              isActive.includes(section._id) ? 'rotate-90' : ''
+                            }`}
+                          />
+                          <h3 className="text-lg font-medium">{section.title}</h3>
+                        </div>
+                        <span className="text-sm text-gray-400">
+                          {section.subSection.length} lectures
+                        </span>
+                      </button>
+                      
+                      {isActive.includes(section._id) && (
+                        <div className="p-4 space-y-2 bg-black/20">
+                          {section.subSection.map((subSection) => (
+                            <div
+                              key={subSection._id}
+                              onClick={() => handleSubsectionClick(subSection)}
+                              className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <BiVideo className="w-5 h-5 text-indigo-400" />
+                                <span className="text-gray-300">{subSection.title}</span>
+                              </div>
+                              {subSection?.lecture?.isFree && (
+                                <span className="px-2 py-1 text-xs font-semibold text-emerald-400 bg-emerald-400/10 rounded-full">
+                                  Free Preview
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Reviews Section */}
+              <section className="space-y-6">
+                <h2 className="text-2xl font-bold text-indigo-300">Student Reviews</h2>
+                <div className="space-y-4">
+                  {ratingAndReviews.map((review) => (
+                    <div key={review._id} className="p-6 bg-white/5 rounded-xl">
+                      <div className="flex items-center gap-3 mb-3">
+                        <img
+                          src={review.user.avatar}
+                          alt={review.user.name}
+                          className="w-10 h-10 rounded-full"
+                        />
+                        <div>
+                          <h4 className="font-medium">{review.user.name}</h4>
+                          <div className="flex items-center gap-1 text-sm text-gray-400">
+                            <ReactStars
+                              count={5}
+                              value={review.rating}
+                              size={16}
+                              edit={false}
+                              activeColor="#818cf8"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-300">{review.review}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-8">
+              {/* Course Highlights */}
+              <div className="p-6 bg-white/5 rounded-xl border border-white/10">
+                <h3 className="text-lg font-semibold mb-4 text-indigo-300">Course Highlights</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <BiTime className="w-5 h-5 text-indigo-400" />
+                    <span>Last updated: {formatDate(createdAt)}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <BiVideo className="w-5 h-5 text-indigo-400" />
+                    <span>{totalNoOfLectures} lectures</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <BsGlobe className="w-5 h-5 text-indigo-400" />
+                    <span>English</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <FaCertificate className="w-5 h-5 text-indigo-400" />
+                    <span>Certificate of Completion</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Class Section */}
+              {(alreadyEnrolled || role === 'INSTRUCTOR') && (
+                <div className="p-6 bg-gradient-to-br from-indigo-600/30 to-cyan-500/20 rounded-xl border border-indigo-400/20">
+                  <h3 className="text-lg font-semibold mb-4 text-cyan-300">Live Sessions</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <BsCalendar className="w-5 h-5 text-cyan-400" />
+                      <div>
+                        <p className="font-medium">Next Session</p>
+                        <p className="text-sm text-gray-400">Coming soon</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/course/${courseId}/live`)}
+                      className="w-full py-2.5 px-4 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors font-medium flex items-center justify-center gap-2"
+                    >
+                      <FaPlayCircle className="w-5 h-5" />
+                      Join Live Class
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Live Class Section */}
-        {(alreadyEnrolled || role === 'INSTRUCTOR') && (
-          <div className={`p-4 mb-6 shadow-sm md:p-6 rounded-xl ${
-            isDarkMode ? "bg-gray-800" : "bg-white"
-          }`}>
-            <button
-              onClick={() => navigate(`/course/${courseId}/live`)}
-              className="w-full px-4 py-2 text-sm text-white transition-colors bg-green-600 rounded-lg md:w-auto md:px-6 md:py-3 md:text-base hover:bg-green-700"
-            >
-              <FaPlayCircle className="inline mr-2" />
-              Join Live Class
-            </button>
-          </div>
+        {/* Video Modal */}
+        {videoModal.isOpen && (
+          <VideoModal videoUrl={videoModal.videoUrl} onClose={closeVideoModal} />
         )}
       </div>
-
-      {/* Video Modal */}
-      {videoModal.isOpen && (
-        <VideoModal videoUrl={videoModal.videoUrl} onClose={closeVideoModal} />
-      )}
-
-      {/* <ChatComponent courseId={courseId} userId={user?._id} /> */}
-      {confirmationModal && <ConfirmationModal modalData={confirmationModal} />}
-    </>
+    </HomeLayout>
   );
 };
 
