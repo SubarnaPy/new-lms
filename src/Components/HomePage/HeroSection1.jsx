@@ -43,11 +43,11 @@ export default function HeroSection1() {
 
   const generateBubble = useCallback((id) => ({
     id,
-    size: `${Math.random() * 30 + 8}px`, // Smaller size for mobile
+    size: `${Math.random() * 30 + 8}px`,
     left: `${Math.random() * 100}%`,
     top: `${Math.random() * 100}%`,
     delay: Math.random() * 5,
-    color: `hsla(${Math.random() * 360}, 70%, 70%, ${Math.random() * 0.2 + 0.1})` // More subtle opacity
+    color: `hsla(${Math.random() * 360}, 70%, 70%, ${Math.random() * 0.2 + 0.1})`
   }), []);
 
   useEffect(() => {
@@ -72,11 +72,23 @@ export default function HeroSection1() {
     "transition-colors duration-500 ease-in-out",
     isDarkMode
       ? "bg-gradient-to-br from-[#020817] via-[#0a0f1f] to-[#020817]"
-      : "bg-gradient-to-br from-[#f8faff] via-[#e6f0ff] to-[#dde8ff]"
+      : "bg-gradient-to-br from-[#f8faff] via-[#e6f0ff] to-[#dde8ff]",
+    "md:bg-none"
   );
 
   return (
     <div className={containerClasses}>
+      {/* Mobile Background Image */}
+      <div className="md:hidden absolute inset-0 z-0 opacity-40">
+        <div className={`absolute inset-0 ${isDarkMode ? 'bg-[#020817]/90' : 'bg-white/90'}`} />
+        <img
+          src={HomeImage}
+          alt="Background"
+          className="w-full h-full object-cover object-center"
+          loading="lazy"
+        />
+      </div>
+
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {bubbles.map(bubble => (
@@ -127,11 +139,11 @@ export default function HeroSection1() {
       >
         <motion.h1
           className={clsx(
-            "text-3xl font-bold leading-snug md:text-4xl lg:text-6xl font-poppins mb-4 md:mb-6 px-2",
-            "md:leading-tight",
+            "text-4xl font-bold leading-snug md:text-4xl lg:text-6xl font-poppins mb-4 md:mb-6 px-2",
+            "md:leading-tight drop-shadow-md",
             isDarkMode ? "text-gray-100" : "text-slate-900"
           )}
-          whileTap={{ scale: 0.98 }} // Mobile tap feedback
+          whileTap={{ scale: 0.98 }}
         >
           Master{' '}
           <motion.span
@@ -150,7 +162,8 @@ export default function HeroSection1() {
         <motion.div
           className={clsx(
             "max-w-md md:max-w-xl text-base md:text-lg mb-6 md:mb-8 px-4",
-            isDarkMode ? "text-gray-300" : "text-gray-700"
+            "backdrop-blur-sm rounded-xl p-4 md:backdrop-blur-none",
+            isDarkMode ? "text-gray-300 bg-black/20" : "text-gray-700 bg-white/20"
           )}
           whileHover={{ scale: 1.01 }}
         >
@@ -160,11 +173,18 @@ export default function HeroSection1() {
               <motion.li
                 key={item}
                 className="flex items-center gap-2 text-sm md:text-base"
-                initial={{ x: -20 }}
-                animate={{ x: 0 }}
+                initial={{ x: -20, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
                 transition={{ delay: i * 0.1 + 0.4 }}
+                viewport={{ once: true, margin: "-20px" }}
               >
-                <span className="text-blue-400 shrink-0">▹</span> 
+                <motion.span
+                  className="text-blue-400 shrink-0"
+                  animate={{ rotate: [0, 15, 0] }}
+                  transition={{ duration: 1, delay: i * 0.2 }}
+                >
+                  ▹
+                </motion.span> 
                 <span className="flex-1">{item}</span>
               </motion.li>
             ))}
@@ -176,7 +196,7 @@ export default function HeroSection1() {
             <motion.button
               className="relative w-full px-6 py-3 md:px-8 md:py-4 text-sm md:text-lg font-semibold text-white 
                 bg-gradient-to-r from-[#0070f3] to-[#00c6ff] rounded-lg md:rounded-xl focus:outline-none 
-                focus:ring-2 md:focus:ring-4 focus:ring-blue-300/50"
+                focus:ring-2 md:focus:ring-4 focus:ring-blue-300/50 shadow-lg"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -194,7 +214,7 @@ export default function HeroSection1() {
               className={clsx(
                 "w-full px-6 py-3 md:px-8 md:py-4 text-sm md:text-lg font-medium border",
                 "rounded-lg md:rounded-xl backdrop-blur-sm transition-all duration-300",
-                "focus:outline-none focus:ring-2 md:focus:ring-4",
+                "focus:outline-none focus:ring-2 md:focus:ring-4 shadow-md",
                 isDarkMode
                   ? "border-gray-600 text-gray-100 hover:bg-gray-800/30 focus:ring-gray-500/30"
                   : "border-blue-500 text-blue-600 hover:bg-blue-50 focus:ring-blue-200/50"
@@ -216,45 +236,40 @@ export default function HeroSection1() {
         className="relative z-50 flex justify-center mt-8 md:mt-12 lg:w-1/2 lg:mt-0"
       >
         <div className="relative group perspective-1000 w-full max-w-xs md:max-w-md lg:max-w-xl">
-          <motion.div
-            className={`absolute -top-4 -left-4 w-16 h-16 md:-top-8 md:-left-8 md:w-24 md:h-24 rounded-full ${
-              isDarkMode ? "bg-[#0070f3]/20" : "bg-[#00c6ff]/20"
-            }`}
-            animate={{
-              y: [0, -20, 0],
-              rotate: [0, 180, 360]
-            }}
-            transition={{
-              duration: 6,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-          
-          <motion.div
-            className={`absolute -bottom-4 -right-4 w-20 h-20 md:-bottom-8 md:-right-8 md:w-32 md:h-32 rounded-xl ${
-              isDarkMode ? "bg-[#00c6ff]/15" : "bg-[#0070f3]/15"
-            }`}
-            animate={{
-              y: [0, 20, 0],
-              scale: [1, 1.1, 1]
-            }}
-            transition={{
-              duration: 5,
-              repeat: Infinity,
-              delay: 1,
-              ease: "easeInOut"
-            }}
-          />
+          {/* Floating elements */}
+          {[...Array(8)].map((_, i) => (
+            <motion.div
+              key={i}
+              className={`absolute ${isDarkMode ? "bg-blue-400/20" : "bg-blue-600/20"} rounded-full blur-sm`}
+              style={{
+                width: `${Math.random() * 20 + 10}px`,
+                height: `${Math.random() * 20 + 10}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`
+              }}
+              animate={{
+                scale: [0.8, 1.2, 0.8],
+                opacity: [0.4, 0.8, 0.4]
+              }}
+              transition={{
+                duration: Math.random() * 3 + 2,
+                repeat: Infinity,
+                delay: Math.random() * 2
+              }}
+            />
+          ))}
 
           <motion.div
             className="relative z-50 overflow-hidden rounded-xl md:rounded-3xl shadow-lg md:shadow-2xl"
-            whileHover={{ 
-              rotateY: window.innerWidth >= 768 ? 5 : 0,
-              rotateX: window.innerWidth >= 768 ? 2 : 0,
-              scale: 1.01 
+            animate={{
+              y: window.innerWidth >= 768 ? [0, -10, 0] : 0,
+              scale: window.innerWidth >= 768 ? [1, 1.02, 1] : 1
             }}
-            transition={{ type: "spring", stiffness: 300 }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
           >
             <motion.div
               className={`absolute inset-0 rounded-xl md:rounded-3xl bg-gradient-to-br opacity-15 ${
@@ -272,13 +287,6 @@ export default function HeroSection1() {
               transition={{ type: "spring", stiffness: 300 }}
             />
           </motion.div>
-
-          <motion.div
-            className="absolute inset-0 rounded-xl md:rounded-3xl opacity-15 pointer-events-none 
-              bg-gradient-to-b from-white/10 via-transparent to-transparent"
-            animate={{ y: ["-100%", "150%"] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-          />
         </div>
       </motion.div>
 
@@ -296,7 +304,8 @@ export default function HeroSection1() {
               animate={{
                 y: [0, -50, 0],
                 opacity: [0, 0.6, 0],
-                scale: [0.5, 1, 0.5]
+                scale: [0.5, 1, 0.5],
+                rotate: [0, 180, 360]
               }}
               transition={{
                 duration: Math.random() * 4 + 2,
