@@ -52,12 +52,13 @@ export const submitAssignment = createAsyncThunk(
 // Grade an assignment (for teachers)
 export const gradeAssignment = createAsyncThunk(
   "assignment/gradeAssignment",
-  async ({ assignmentId, submissionId, grade, verified }, { rejectWithValue }) => {
+  async ({ assignmentId, submissionId, grade, feedback,verified }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post(`/courses/grade/gradeAssignment`, {
         assignmentId,
         submissionId,
         grade,
+        feedback,
         verified,
       });
       return response.data;
