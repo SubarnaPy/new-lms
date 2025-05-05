@@ -243,7 +243,7 @@ const CodeCompiler = () => {
       setExecutionTime(Date.now() - startTime);
     } catch (err) {
       setError(err.response?.data?.error || 
-        (err.name === 'AbortError' ? 'Executions timed out (5s)' : err.message));
+        (err.name === 'AbortError' ? 'Execution timed out (5s)' : err.message));
     } finally {
       setLoading(false);
     }
