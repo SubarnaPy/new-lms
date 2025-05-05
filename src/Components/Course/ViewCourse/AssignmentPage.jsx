@@ -57,7 +57,7 @@ const AssignmentPage = () => {
             const studentSubmission = submissionList.find(
               sub => sub.studentId._id === studentId
             );
-            setStatus(studentSubmission ? "Submitted" : "Not Submitted");
+            setStatus(studentSubmission ? "Submitted" : "Not yet Submitted");
           }
         }
       } catch (error) {
