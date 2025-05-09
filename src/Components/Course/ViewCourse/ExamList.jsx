@@ -113,7 +113,7 @@ const ExamList = () => {
             Swal.fire({
                 icon: 'success',
                 title: 'Exam Updated!',
-                text: 'Your exam has been successfully updated.',
+                text: 'Your exam has  successfully updated.',
                 timer: 2000,
                 showConfirmButton: false,
                 background: '#020817',
