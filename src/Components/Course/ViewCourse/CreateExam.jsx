@@ -15,7 +15,7 @@ const ExamForm = () => {
     const [error, setError] = useState('');
   
     const [exam, setExam] = useState({
-        userId: '',
+      instructorId: '',
         courseId: '',
         title: '',
         instructions: '',
@@ -39,7 +39,7 @@ const ExamForm = () => {
         };
       
         if (user?._id) {
-          setExam(prev => ({ ...prev, userId: user._id }));
+          setExam(prev => ({ ...prev, instructorId: user._id }));
           fetchCourses();
         }
       }, [user, dispatch]);
@@ -111,7 +111,7 @@ const ExamForm = () => {
                   } overflow-hidden transition-all duration-200 hover:border-blue-400`}
                 >
                   <img
-                    src={course.image || '/default-course.jpg'}
+                    src={course.thumbnail.secure_url || '/default-course.jpg'}
                     alt={course.title}
                     className="object-cover w-full h-full"
                   />
