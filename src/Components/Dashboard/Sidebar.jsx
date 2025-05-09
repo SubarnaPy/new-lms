@@ -25,11 +25,11 @@ const Sidebar = () => {
   }
 
   // Add Exam List and Create Exam to the sidebar
-  const examLinks = [
-    { name: 'Exam List', path: '/dashboard/examlist', icon: 'VscList', type: 'instructor' },
-    { name: 'Create Exam', path: '/dashboard/createexam', icon: 'VscAdd', type: 'instructor' },
-    { name: 'My Exams', path: '/dashboard/myexams', icon: 'VscFolderOpened', type: 'instructor' }, // <- ADD THIS
-  ];
+  // const examLinks = [
+  //   { name: 'Exam List', path: '/dashboard/examlist', icon: 'VscList', type: 'instructor' },
+  //   { name: 'Create Exam', path: '/dashboard/createexam', icon: 'VscAdd', type: 'instructor' },
+  //   { name: 'My Exams', path: '/dashboard/myexams', icon: 'VscFolderOpened', type: 'instructor' }, // <- ADD THIS
+  // ];
   
 
   return (
@@ -45,9 +45,9 @@ const Sidebar = () => {
           })}
 
           {/* Add exam links for instructors */}
-          {user?.role === 'INSTRUCTOR' && examLinks.map((link) => (
+          {/* {user?.role === 'INSTRUCTOR' && examLinks.map((link) => (
             <SidebarLink key={link.name} link={link} iconName={link.icon} />
-          ))}
+          ))} */}
         </div>
 
         <div className="mx-auto mt-6 mb-6 h-[1px] w-10/12 bg-slate-200 dark:bg-gray-700"></div>
@@ -88,9 +88,9 @@ const Sidebar = () => {
               <SidebarLink key={link.id} link={link} iconName={link.icon} />
             );
           })}
-          {user?.role === 'INSTRUCTOR' && examLinks.map((link) => (
+          {/* {user?.role === 'INSTRUCTOR' && examLinks.map((link) => (
             <SidebarLink key={link.name} link={link} iconName={link.icon} />
-          ))}
+          ))} */}
           <SidebarLink
             link={{ name: 'Settings', path: '/dashboard/settings' }}
             iconName="VscSettingsGear"
