@@ -45,7 +45,7 @@ const Sidebar = () => {
           })}
 
           {/* Add exam links for instructors */}
-          {user?.role === 'instructor' && examLinks.map((link) => (
+          {user?.role === 'INSTRUCTOR' && examLinks.map((link) => (
             <SidebarLink key={link.name} link={link} iconName={link.icon} />
           ))}
         </div>
@@ -88,7 +88,7 @@ const Sidebar = () => {
               <SidebarLink key={link.id} link={link} iconName={link.icon} />
             );
           })}
-          {user?.role === 'instructor' && examLinks.map((link) => (
+          {user?.role === 'INSTRUCTOR' && examLinks.map((link) => (
             <SidebarLink key={link.name} link={link} iconName={link.icon} />
           ))}
           <SidebarLink
