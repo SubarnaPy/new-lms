@@ -38,6 +38,9 @@ import { getProfile } from './Redux/profileSlice';
 import AssignmentPage from './Components/Course/ViewCourse/AssignmentPage';
 import QuizPage from './Components/Course/ViewCourse/QuizePage';
 import CodeCompiler from './Components/Course/ViewCourse/CodeCompiler';
+import ExamList from './Components/Course/ViewCourse/ViewExam';
+import ExamForm from './Components/Course/ViewCourse/CreateExam';
+import InstructorExamList from './Components/Course/ViewCourse/ExamList';
 
 
 
@@ -163,6 +166,9 @@ const App = () => {
                 <Route path="dashboard/add-course" element={<AddCourse />} />
                 <Route path="dashboard/my-courses" element={<MyCourses />} />
                 <Route path="dashboard/edit-course/:courseId" element={<EditCourse />} />
+                <Route path="dashboard/examlist/:examid" element={<ExamList />} />
+                 <Route path="dashboard/createexam" element={<ExamForm />} />
+                 <Route path="/dashboard/myexams" element={<InstructorExamList />} />
                 </>
               )
             }
