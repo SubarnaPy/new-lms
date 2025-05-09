@@ -1,15 +1,54 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import axiosInstance from '../../../Helpers/axiosInstance';
+import { getAllCourses } from '../../../Redux/courseSlice';
+import { useDispatch, useSelector } from 'react-redux';
 
 const ExamForm = () => {
-  const [exam, setExam] = useState({
-    title: '',
-    instructions: '',
-    duration: 0,
-    passingScore: 0,
-    questions: [{ question: '', options: ['', ''], correctAnswer: 0 }]
-  });
+
+    const user = useSelector((state) => state.profile.data);
+
+    const dispatch =useDispatch()
+    const [courses, setCourses] = useState([]);
+    const [selectedCourseId, setSelectedCourseId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+  
+    const [exam, setExam] = useState({
+        userId: '',
+        courseId: '',
+        title: '',
+        instructions: '',
+        duration: 0,
+        passingScore: 0,
+        questions: [{ question: '', options: ['', ''], correctAnswer: 0 }]
+      });
+      
+  
+    // Fetch courses by instructorId
+    useEffect(() => {
+        const fetchCourses = async () => {
+          try {
+            const response = await dispatch(getAllCourses());
+            setCourses(response.payload);
+            setLoading(false);
+          } catch (err) {
+            setError('Failed to fetch courses');
+            setLoading(false);
+          }
+        };
+      
+        if (user?._id) {
+          setExam(prev => ({ ...prev, userId: user._id }));
+          fetchCourses();
+        }
+      }, [user, dispatch]);
+      
+    // Handle course selection
+    const handleCourseSelect = (courseId) => {
+      setSelectedCourseId(courseId);
+      setExam(prev => ({ ...prev, courseId }));
+    };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -54,6 +93,36 @@ const ExamForm = () => {
     <div className="min-h-screen px-4 py-8 bg-gray-50 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="mb-8 text-3xl font-bold text-gray-900">Create New Exam</h1>
+
+        <div className="mb-8">
+          <h2 className="mb-4 text-xl font-semibold">Select Course</h2>
+          {loading ? (
+            <div className="text-center">Loading courses...</div>
+          ) : error ? (
+            <div className="text-red-600">{error}</div>
+          ) : (
+            <div className="flex pb-4 space-x-4 overflow-x-auto">
+              {courses.map((course) => (
+                <div
+                  key={course._id}
+                  onClick={() => handleCourseSelect(course._id)}
+                  className={`flex-shrink-0 w-48 h-48 cursor-pointer rounded-lg border-2 ${
+                    selectedCourseId === course._id ? 'border-blue-500' : 'border-gray-200'
+                  } overflow-hidden transition-all duration-200 hover:border-blue-400`}
+                >
+                  <img
+                    src={course.image || '/default-course.jpg'}
+                    alt={course.title}
+                    className="object-cover w-full h-full"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 p-2 text-sm text-white bg-black bg-opacity-50">
+                    {course.title}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         
         <form onSubmit={(e) => { e.preventDefault(); submitExam(); }} className="space-y-8">
           {/* Exam Details Card */}
