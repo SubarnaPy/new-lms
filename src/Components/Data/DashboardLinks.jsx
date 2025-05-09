@@ -1,4 +1,5 @@
 import { ACCOUNT_TYPE } from "../../utils/constants";
+
 export const sidebarLinks = [
   {
     id: 1,
@@ -42,9 +43,34 @@ export const sidebarLinks = [
     icon: "VscBookmark",
   },
   {
+    id: 7,
     name: "Admin Panel",
     path: "/dashboard/admin-panel",
     type: ACCOUNT_TYPE.ADMIN,
     icon: "VscHistory",
+  },
+
+  // 💡 Exam Links for Instructor
+  {
+    id: 8,
+    name: "Exam List",
+    path: "/dashboard/examlist",
+    icon: "VscList",
+    type: ACCOUNT_TYPE.INSTRUCTOR,
+  },
+  {
+    id: 9,
+    name: "Create Exam",
+    path: "/dashboard/createexam",
+    icon: "VscAdd",
+    type: ACCOUNT_TYPE.INSTRUCTOR,
+  },
+  {
+    id: 10,
+    
+    name: "My Exams",
+    path: "/dashboard/myexams",
+    icon: "VscFolderOpened",
+    type: ACCOUNT_TYPE.INSTRUCTOR,
   },
 ];
