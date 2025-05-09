@@ -55,7 +55,7 @@ export const sidebarLinks = [
     id: 8,
     name: "Exam List",
     path: "/dashboard/examlist",
-    icon: "VscList",
+    icon: "VscBook",
     type: ACCOUNT_TYPE.INSTRUCTOR,
   },
   {
@@ -70,7 +70,7 @@ export const sidebarLinks = [
     
     name: "My Exams",
     path: "/dashboard/myexams",
-    icon: "VscFolderOpened",
+    icon: "VscFolder",
     type: ACCOUNT_TYPE.INSTRUCTOR,
   },
 ];
